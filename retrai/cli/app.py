@@ -34,11 +34,19 @@ def run(
     ),
     max_iter: int = typer.Option(20, "--max-iter", "-n", help="Maximum agent iterations"),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
+    api_key: str | None = typer.Option(
+        None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
+    ),
+    api_base: str | None = typer.Option(
+        None, "--api-base", help="Custom API base URL (e.g. for Azure, Ollama, vLLM)"
+    ),
 ) -> None:
     """Run an agent goal loop in the terminal.
 
     If no goal is given, retrAI scans the project and auto-detects the right one.
     """
+    import os
+
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -68,6 +76,19 @@ def run(
     if goal not in available:
         console.print(f"[red]Unknown goal: '{goal}'. Available: {', '.join(available)}[/red]")
         raise typer.Exit(code=1)
+
+    # Apply auth overrides
+    if api_key:
+        for env_var in [
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+            "AZURE_API_KEY",
+        ]:
+            if not os.environ.get(env_var):
+                os.environ[env_var] = api_key
+    if api_base:
+        os.environ["OPENAI_API_BASE"] = api_base
 
     cfg = RunConfig(
         goal=goal,
@@ -261,21 +282,82 @@ def serve(
 
 @app.command()
 def tui(
-    goal: str = typer.Argument(..., help="Goal to run in the TUI"),
+    goal: str | None = typer.Argument(
+        None,
+        help=(
+            "Goal to achieve (e.g. 'pytest', 'pyright', 'bun-test'). "
+            "Omit to auto-detect from project files."
+        ),
+    ),
     cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
     model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model"),
     max_iter: int = typer.Option(20, "--max-iter", "-n", help="Max iterations"),
+    hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
+    api_key: str | None = typer.Option(
+        None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
+    ),
+    api_base: str | None = typer.Option(
+        None, "--api-base", help="Custom API base URL (e.g. for Azure, Ollama, vLLM)"
+    ),
 ) -> None:
-    """Launch the interactive Textual TUI."""
+    """Launch the interactive Textual TUI.
+
+    If no goal is given, retrAI scans the project and auto-detects the right one.
+    """
+    import os
+
     from dotenv import load_dotenv
 
     load_dotenv()
 
     from retrai.config import RunConfig
+    from retrai.goals.detector import detect_goal
+    from retrai.goals.registry import list_goals
     from retrai.tui.app import RetrAITUI
 
     resolved_cwd = str(Path(cwd).resolve())
-    cfg = RunConfig(goal=goal, cwd=resolved_cwd, model_name=model, max_iterations=max_iter)
+
+    # Auto-detect goal if not provided
+    if goal is None:
+        detected = detect_goal(resolved_cwd)
+        if detected is None:
+            available = ", ".join(list_goals())
+            console.print(
+                "[yellow]Could not auto-detect a test framework in this project.[/yellow]\n"
+                f"Available goals: [bold]{available}[/bold]\n"
+                "Run [bold]retrai tui <goal>[/bold] or [bold]retrai init[/bold] to configure."
+            )
+            raise typer.Exit(code=1)
+        console.print(f"[dim]Auto-detected goal:[/dim] [bold cyan]{detected}[/bold cyan]")
+        goal = detected
+
+    # Validate goal
+    available = list_goals()
+    if goal not in available:
+        console.print(f"[red]Unknown goal: '{goal}'. Available: {', '.join(available)}[/red]")
+        raise typer.Exit(code=1)
+
+    # Apply auth overrides
+    if api_key:
+        # LiteLLM picks up provider-specific keys, but we also set the generic ones
+        for env_var in [
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+            "AZURE_API_KEY",
+        ]:
+            if not os.environ.get(env_var):
+                os.environ[env_var] = api_key
+    if api_base:
+        os.environ["OPENAI_API_BASE"] = api_base
+
+    cfg = RunConfig(
+        goal=goal,
+        cwd=resolved_cwd,
+        model_name=model,
+        max_iterations=max_iter,
+        hitl_enabled=hitl,
+    )
     tui_app = RetrAITUI(cfg=cfg)
     tui_app.run()
 
