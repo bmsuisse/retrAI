@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -48,6 +49,10 @@ def _interactive_setup(cwd: str) -> dict[str, str]:
         provider_name = providers[0]
     provider = PROVIDER_MODELS[provider_name]
     console.print(f"\n[dim]Selected:[/dim] [bold]{provider_name}[/bold]")
+
+    # Handle Copilot device flow
+    if provider.get("auth_type") == "copilot_device_flow":
+        return _copilot_setup(cwd, yaml)
 
     # 2. Pick model
     models = provider["models"]
@@ -102,11 +107,84 @@ def _interactive_setup(cwd: str) -> dict[str, str]:
         "model": model,
     }
     config_path = Path(cwd) / ".retrai.yml"
-    config_path.write_text(yaml.dump(dict(config), default_flow_style=False, sort_keys=False))
+    config_path.write_text(
+        yaml.dump(dict(config), default_flow_style=False, sort_keys=False)
+    )
     console.print(
         f"\n[bold green]✓ Saved to {config_path.name}[/bold green]\n"
     )
     return {"model": model}
+
+
+def _copilot_setup(cwd: str, yaml: Any) -> dict[str, str]:
+    """Run GitHub Copilot device flow and model selection."""
+    import webbrowser
+
+    from retrai.providers.copilot_auth import (
+        initiate_device_flow,
+        list_copilot_models,
+        poll_for_access_token,
+    )
+
+    # Start device flow
+    dc = initiate_device_flow()
+    console.print(
+        Panel(
+            f"[bold cyan]GitHub Copilot Login[/bold cyan]\n\n"
+            f"  1. Open [bold underline]{dc.verification_uri}[/bold underline]\n"
+            f"  2. Enter code: [bold yellow]{dc.user_code}[/bold yellow]\n\n"
+            f"[dim]Waiting for authorization...[/dim]",
+            border_style="cyan",
+        )
+    )
+    # Try to open browser automatically
+    try:
+        webbrowser.open(dc.verification_uri)
+    except Exception:
+        pass
+
+    # Poll until authorized
+    try:
+        github_token = poll_for_access_token(
+            dc.device_code,
+            interval=dc.interval,
+            timeout=dc.expires_in,
+        )
+    except (TimeoutError, PermissionError) as e:
+        console.print(f"\n[red]✗ {e}[/red]")
+        raise typer.Exit(code=1) from e
+
+    console.print("\n[bold green]✓ Authenticated with GitHub Copilot![/bold green]")
+
+    # Fetch available models
+    models = list_copilot_models(github_token)
+    console.print("\n[bold]Choose a model:[/bold]")
+    for i, m in enumerate(models, 1):
+        console.print(f"  [cyan]{i}[/cyan]) {m}")
+    console.print(f"  [cyan]{len(models) + 1}[/cyan]) Custom (enter manually)")
+    model_choice = typer.prompt("Model number", default="1")
+    try:
+        idx = int(model_choice) - 1
+        model = models[idx] if 0 <= idx < len(models) else ""
+    except (ValueError, IndexError):
+        model = models[0]
+    if not model:
+        model = typer.prompt("Enter model name")
+    console.print(f"[dim]Model:[/dim] [bold]{model}[/bold]")
+
+    # Save config with copilot provider marker
+    config: dict[str, str | int | bool] = {
+        "provider": "copilot",
+        "model": model,
+    }
+    config_path = Path(cwd) / ".retrai.yml"
+    config_path.write_text(
+        yaml.dump(dict(config), default_flow_style=False, sort_keys=False)
+    )
+    console.print(
+        f"\n[bold green]✓ Saved to {config_path.name}[/bold green]\n"
+    )
+    return {"provider": "copilot", "model": model}
 
 
 def _resolve_config(
@@ -148,6 +226,32 @@ def _resolve_config(
         else int(file_cfg.get("max_iterations", max_iter))
     )
     resolved_hitl = hitl or bool(file_cfg.get("hitl_enabled", False))
+
+    # Handle Copilot provider — inject token and API base
+    if file_cfg.get("provider") == "copilot" and not api_key:
+        from retrai.providers.copilot_auth import (
+            COPILOT_API_BASE,
+            get_or_refresh_copilot_token,
+        )
+
+        try:
+            ct = get_or_refresh_copilot_token()
+            os.environ["OPENAI_API_KEY"] = ct.token
+            os.environ["OPENAI_API_BASE"] = COPILOT_API_BASE
+            # Copilot models are OpenAI-compatible, prefix with openai/
+            model_name = str(resolved_model)
+            if not model_name.startswith(("openai/", "copilot/")):
+                resolved_model = f"openai/{model_name}"
+            console.print(
+                "[dim]Using GitHub Copilot subscription[/dim]"
+            )
+        except ValueError as e:
+            console.print(f"[red]{e}[/red]")
+            console.print(
+                "[yellow]Run [bold]retrai init[/bold] and select "
+                "GitHub Copilot to re-authenticate.[/yellow]"
+            )
+            raise typer.Exit(code=1) from e
 
     # Resolve goal: CLI arg > config file > auto-detect
     if goal is None:

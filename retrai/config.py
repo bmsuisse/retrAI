@@ -19,6 +19,12 @@ PROVIDER_DEFS: list[dict[str, Any]] = [
         "env_var": "OPENAI_API_KEY",
     },
     {
+        "name": "GitHub Copilot",
+        "prefix": None,
+        "env_var": None,
+        "auth_type": "copilot_device_flow",
+    },
+    {
         "name": "Google (Gemini)",
         "prefix": "gemini/",
         "env_var": "GEMINI_API_KEY",
@@ -80,11 +86,29 @@ def get_provider_models() -> dict[str, dict[str, Any]]:
             "env_var": pdef.get("env_var"),
         }
         # Copy extra fields
-        for key in ("extra_env", "api_base"):
+        for key in ("extra_env", "api_base", "auth_type"):
             if key in pdef:
                 entry[key] = pdef[key]
 
-        # Fetch models dynamically
+        # Special handling for Copilot
+        if pdef.get("auth_type") == "copilot_device_flow":
+            try:
+                from retrai.providers.copilot_auth import (
+                    _load_auth,
+                    list_copilot_models,
+                )
+                auth = _load_auth()
+                gh_token = auth.get("github_oauth_token")
+                if gh_token:
+                    entry["models"] = list_copilot_models(str(gh_token))
+                else:
+                    entry["models"] = _copilot_fallback_models()
+            except Exception:
+                entry["models"] = _copilot_fallback_models()
+            result[name] = entry
+            continue
+
+        # Fetch models dynamically from LiteLLM
         prefixes = pdef.get("prefixes", [pdef.get("prefix")])
         models: list[str] = []
         for pfx in prefixes:
@@ -95,6 +119,19 @@ def get_provider_models() -> dict[str, dict[str, Any]]:
         result[name] = entry
 
     return result
+
+
+def _copilot_fallback_models() -> list[str]:
+    """Fallback model list for Copilot when not yet authenticated."""
+    return [
+        "claude-sonnet-4",
+        "claude-sonnet-4-thinking",
+        "gpt-4o",
+        "gpt-4.1",
+        "o4-mini",
+        "o3",
+        "gemini-2.5-pro",
+    ]
 
 
 @dataclass
