@@ -141,7 +141,7 @@ class RunConfig:
     goal: str
     cwd: str = field(default_factory=lambda: str(Path.cwd()))
     model_name: str = "claude-sonnet-4-6"
-    max_iterations: int = 20
+    max_iterations: int = 50
     hitl_enabled: bool = False
     run_id: str = ""
 

@@ -222,7 +222,7 @@ def _resolve_config(
     # Merge: CLI args > config file > defaults
     resolved_model = model if model != "claude-sonnet-4-6" else file_cfg.get("model", model)
     resolved_max_iter = (
-        max_iter if max_iter != 20
+        max_iter if max_iter != 50
         else int(file_cfg.get("max_iterations", max_iter))
     )
     resolved_hitl = hitl or bool(file_cfg.get("hitl_enabled", False))
@@ -304,7 +304,7 @@ def run(
     model: str = typer.Option(
         "claude-sonnet-4-6", "--model", "-m", help="LLM model name (LiteLLM format)"
     ),
-    max_iter: int = typer.Option(20, "--max-iter", "-n", help="Maximum agent iterations"),
+    max_iter: int = typer.Option(50, "--max-iter", "-n", help="Maximum agent iterations"),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
@@ -531,7 +531,7 @@ def tui(
     ),
     cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
     model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model"),
-    max_iter: int = typer.Option(20, "--max-iter", "-n", help="Max iterations"),
+    max_iter: int = typer.Option(50, "--max-iter", "-n", help="Max iterations"),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
@@ -576,7 +576,7 @@ def init(
         None, "--goal", "-g", help="Goal to use (auto-detected if omitted)"
     ),
     model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model name"),
-    max_iter: int = typer.Option(20, "--max-iter", "-n", help="Max agent iterations"),
+    max_iter: int = typer.Option(50, "--max-iter", "-n", help="Max agent iterations"),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
 ) -> None:
     """Scaffold a .retrai.yml config file in the project directory."""

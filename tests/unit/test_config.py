@@ -12,7 +12,7 @@ def test_default_values():
     cfg = RunConfig(goal="pytest")
     assert cfg.goal == "pytest"
     assert cfg.model_name == "claude-sonnet-4-6"
-    assert cfg.max_iterations == 20
+    assert cfg.max_iterations == 50
     assert cfg.hitl_enabled is False
     assert cfg.run_id  # non-empty
     assert Path(cfg.cwd).is_absolute()

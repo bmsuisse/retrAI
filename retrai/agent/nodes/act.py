@@ -14,6 +14,7 @@ from retrai.tools.file_patch import file_patch
 from retrai.tools.file_read import file_list, file_read
 from retrai.tools.file_write import file_write
 from retrai.tools.pytest_runner import run_pytest
+from retrai.tools.web_search import web_search
 
 
 async def act_node(state: AgentState, config: RunnableConfig) -> dict:
@@ -129,8 +130,17 @@ async def _dispatch(tool_name: str, args: dict, cwd: str) -> tuple[str, bool]:
             return output, False
 
         elif tool_name == "file_patch":
-            result_msg = await file_patch(args["path"], args["old"], args["new"], cwd)
+            result_msg = await file_patch(
+                args["path"], args["old"], args["new"], cwd
+            )
             return result_msg, False
+
+        elif tool_name == "web_search":
+            result = await web_search(
+                query=args["query"],
+                max_results=int(args.get("max_results", 5)),
+            )
+            return result[:8000], False
 
         else:
             return f"Unknown tool: {tool_name}", True

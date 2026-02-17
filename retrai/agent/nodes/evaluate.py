@@ -61,13 +61,38 @@ async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
         reason_final = reason
 
     # Inject goal status into conversation so the LLM knows where it stands
-    status_msg = HumanMessage(
-        content=(
-            f"[Iteration {new_iteration}/{state['max_iterations']}] "
-            f"Goal status: {'ACHIEVED' if achieved else 'NOT YET ACHIEVED'}. "
-            f"Reason: {reason}"
+    remaining = state["max_iterations"] - new_iteration
+    if achieved:
+        status_msg = HumanMessage(
+            content=(
+                f"[Iteration {new_iteration}/{state['max_iterations']}] "
+                f"✅ Goal ACHIEVED! {reason}"
+            )
         )
-    )
+    elif new_iteration >= state["max_iterations"]:
+        status_msg = HumanMessage(
+            content=(
+                f"[Iteration {new_iteration}/{state['max_iterations']}] "
+                f"⛔ Max iterations reached. Final status: {reason}"
+            )
+        )
+    else:
+        status_msg = HumanMessage(
+            content=(
+                f"[Iteration {new_iteration}/{state['max_iterations']}] "
+                f"Goal NOT YET achieved. {reason}\n\n"
+                f"You have {remaining} iterations remaining. "
+                "DO NOT give up. Analyze what went wrong and try a "
+                "different approach. If your current strategy isn't "
+                "working, consider:\n"
+                "- Reading the error messages more carefully\n"
+                "- Trying an alternative solution\n"
+                "- Searching the web for similar issues\n"
+                "- Running diagnostic commands to gather more info\n"
+                "- Simplifying your approach\n"
+                "Keep going until the goal is achieved."
+            )
+        )
 
     return {
         "messages": [status_msg],
