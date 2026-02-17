@@ -80,6 +80,23 @@ TOOL_DEFINITIONS = [
             "required": [],
         },
     },
+    {
+        "name": "file_patch",
+        "description": (
+            "Surgically replace an exact text match in a file with new text. "
+            "More efficient than rewriting the whole file — provide only the exact "
+            "old text and the replacement. The old text must appear exactly once."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "File path relative to project root"},
+                "old": {"type": "string", "description": "Exact text to find (must be unique)"},
+                "new": {"type": "string", "description": "Replacement text"},
+            },
+            "required": ["path", "old", "new"],
+        },
+    },
 ]
 
 
@@ -117,6 +134,27 @@ async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
 
     response: AIMessage = await llm_with_tools.ainvoke(messages)
 
+    # Extract token usage metadata (always, for tracking)
+    usage_meta = getattr(response, "usage_metadata", None) or {}
+
+    # Emit token usage event
+    if event_bus and usage_meta:
+        prompt_tokens = usage_meta.get("input_tokens", 0)
+        completion_tokens = usage_meta.get("output_tokens", 0)
+        await event_bus.publish(
+            AgentEvent(
+                kind="llm_usage",
+                run_id=run_id,
+                iteration=iteration,
+                payload={
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                    "model": state["model_name"],
+                },
+            )
+        )
+
     # Extract tool calls from the response
     pending: list[ToolCall] = []
     if hasattr(response, "tool_calls") and response.tool_calls:
@@ -129,10 +167,15 @@ async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
                 )
             )
 
+    new_total = state.get("total_tokens", 0)
+    if usage_meta:
+        new_total += usage_meta.get("input_tokens", 0) + usage_meta.get("output_tokens", 0)
+
     return {
         "messages": [response],
         "pending_tool_calls": pending,
         "tool_results": [],
+        "total_tokens": new_total,
     }
 
 
@@ -165,6 +208,8 @@ def _build_system_prompt(goal: Any, state: AgentState) -> str:
         "- `file_read`: read a file\n"
         "- `file_list`: list directory contents\n"
         "- `file_write`: write/overwrite a file\n"
+        "- `file_patch`: surgically replace exact text in a file (preferred for edits)\n"
         "- `run_pytest`: run the test suite\n\n"
+        "Prefer `file_patch` over `file_write` when making targeted edits.\n"
         "Always think step-by-step. Be methodical and precise."
     )

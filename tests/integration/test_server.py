@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -39,7 +40,7 @@ def client() -> TestClient:
 
 
 @pytest.fixture
-async def async_client() -> AsyncClient:
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
     app = create_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c

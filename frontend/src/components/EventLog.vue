@@ -42,6 +42,7 @@ function kindColor(kind: string): string {
     run_end: '#e2e8f0',
     error: '#f87171',
     log: '#94a3b8',
+    llm_usage: '#c084fc',
   }[kind] ?? '#94a3b8'
 }
 
@@ -52,6 +53,7 @@ function formatPayload(kind: string, payload: Record<string, unknown>): string {
   if (kind === 'step_start') return `node=${payload.node}`
   if (kind === 'run_end') return `status=${payload.status} — ${payload.reason}`
   if (kind === 'error') return `ERROR: ${payload.error}`
+  if (kind === 'llm_usage') return `${payload.model}: ${payload.prompt_tokens}→${payload.completion_tokens} (${payload.total_tokens} total)`
   return JSON.stringify(payload).slice(0, 120)
 }
 

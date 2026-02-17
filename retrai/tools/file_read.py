@@ -1,4 +1,4 @@
-"""Async file read tool (cwd-relative paths)."""
+"""Async file read tool (cwd-relative paths) with path-traversal protection."""
 
 from __future__ import annotations
 
@@ -6,12 +6,26 @@ import asyncio
 from pathlib import Path
 
 
+def _safe_resolve(path: str, cwd: str) -> Path:
+    """Resolve *path* relative to *cwd* and ensure it stays inside the tree.
+
+    Raises PermissionError on traversal attempts (e.g. ``../../etc/passwd``).
+    """
+    root = Path(cwd).resolve()
+    full = (root / path).resolve()
+    if not (full == root or str(full).startswith(str(root) + "/")):
+        raise PermissionError(
+            f"Path traversal blocked: '{path}' resolves outside project root"
+        )
+    return full
+
+
 async def file_read(path: str, cwd: str, max_bytes: int = 200_000) -> str:
     """Read a file relative to cwd. Returns content as string.
 
     Truncates to max_bytes to avoid overwhelming the LLM context.
     """
-    full_path = Path(cwd) / path
+    full_path = _safe_resolve(path, cwd)
 
     def _read() -> str:
         if not full_path.exists():
@@ -29,7 +43,7 @@ async def file_read(path: str, cwd: str, max_bytes: int = 200_000) -> str:
 
 async def file_list(path: str, cwd: str) -> list[str]:
     """List files/directories at path relative to cwd."""
-    full_path = Path(cwd) / path
+    full_path = _safe_resolve(path, cwd)
 
     def _list() -> list[str]:
         if not full_path.exists():

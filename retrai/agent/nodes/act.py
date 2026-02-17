@@ -10,6 +10,7 @@ from langchain_core.runnables import RunnableConfig
 from retrai.agent.state import AgentState, ToolResult
 from retrai.events.types import AgentEvent
 from retrai.tools.bash_exec import bash_exec
+from retrai.tools.file_patch import file_patch
 from retrai.tools.file_read import file_list, file_read
 from retrai.tools.file_write import file_write
 from retrai.tools.pytest_runner import run_pytest
@@ -126,6 +127,10 @@ async def _dispatch(tool_name: str, args: dict, cwd: str) -> tuple[str, bool]:
                 indent=2,
             )
             return output, False
+
+        elif tool_name == "file_patch":
+            result_msg = await file_patch(args["path"], args["old"], args["new"], cwd)
+            return result_msg, False
 
         else:
             return f"Unknown tool: {tool_name}", True

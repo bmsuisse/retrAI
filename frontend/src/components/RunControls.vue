@@ -75,9 +75,16 @@ async function startRun() {
         <label>Goal</label>
         <select v-model="goal" class="input">
           <option value="pytest">pytest — fix failing tests</option>
+          <option value="pyright">pyright — fix type errors</option>
+          <option value="bun-test">bun-test — fix Bun/JS tests</option>
+          <option value="npm-test">npm-test — fix npm test suite</option>
+          <option value="cargo-test">cargo-test — fix Rust tests</option>
+          <option value="go-test">go-test — fix Go tests</option>
+          <option value="make-test">make-test — fix Makefile tests</option>
           <option value="shell-goal">shell-goal — custom command (.retrai.yml)</option>
           <option value="perf-check">perf-check — optimise under time limit</option>
           <option value="sql-benchmark">sql-benchmark — tune a SQL query</option>
+          <option value="ai-eval">ai-eval — AI evaluation harness</option>
         </select>
       </div>
 

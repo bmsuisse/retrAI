@@ -39,3 +39,5 @@ class AgentState(TypedDict):
     model_name: str
     cwd: str
     run_id: str
+    # Token usage tracking
+    total_tokens: int

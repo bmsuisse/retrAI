@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRunStore } from '@/stores/runStore'
+import { useEventStore } from '@/stores/eventStore'
 
 const runStore = useRunStore()
+const eventStore = useEventStore()
 
 const run = computed(() => runStore.activeRun)
 
@@ -21,6 +23,19 @@ const progress = computed(() => {
   if (!run.value) return 0
   return Math.round((run.value.iteration / run.value.maxIterations) * 100)
 })
+
+const totalTokens = computed(() => {
+  if (!run.value) return 0
+  return eventStore.events
+    .filter((e) => e.run_id === run.value!.runId && e.kind === 'llm_usage')
+    .reduce((sum, e) => sum + ((e.payload.total_tokens as number) || 0), 0)
+})
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
 </script>
 
 <template>
@@ -51,6 +66,10 @@ const progress = computed(() => {
       <span class="meta-item">
         <span class="meta-key">CWD</span>
         <span class="meta-val truncate">{{ run.cwd }}</span>
+      </span>
+      <span v-if="totalTokens > 0" class="meta-item">
+        <span class="meta-key">Tokens</span>
+        <span class="meta-val">{{ formatTokens(totalTokens) }}</span>
       </span>
     </div>
 
