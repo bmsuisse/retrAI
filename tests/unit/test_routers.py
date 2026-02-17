@@ -23,6 +23,7 @@ def _state(**overrides) -> AgentState:
         "model_name": "claude-sonnet-4-6",
         "cwd": "/tmp",
         "run_id": "test-run",
+        "total_tokens": 0,
     }
     base.update(overrides)  # type: ignore[typeddict-unknown-key]
     return base

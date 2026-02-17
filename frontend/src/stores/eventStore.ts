@@ -12,6 +12,7 @@ export type EventKind =
   | 'run_end'
   | 'error'
   | 'log'
+  | 'llm_usage'
 
 export interface AgentEvent {
   kind: EventKind

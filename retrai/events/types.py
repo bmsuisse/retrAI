@@ -17,6 +17,7 @@ EventKind = Literal[
     "run_end",
     "error",
     "log",
+    "llm_usage",
 ]
 
 

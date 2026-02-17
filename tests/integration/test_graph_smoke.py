@@ -68,6 +68,7 @@ async def test_graph_runs_to_end_when_goal_passes(passing_project: Path, mock_ll
         "model_name": "claude-sonnet-4-6",
         "cwd": str(passing_project),
         "run_id": "smoke-test-1",
+        "total_tokens": 0,
     }
     run_config = {
         "configurable": {
@@ -103,6 +104,7 @@ async def test_graph_stops_at_max_iterations(failing_project: Path, mock_llm: Ma
         "model_name": "claude-sonnet-4-6",
         "cwd": str(failing_project),
         "run_id": "smoke-test-2",
+        "total_tokens": 0,
     }
     run_config = {
         "configurable": {
@@ -140,6 +142,7 @@ async def test_graph_emits_events(passing_project: Path, mock_llm: MagicMock):
         "model_name": "claude-sonnet-4-6",
         "cwd": str(passing_project),
         "run_id": "smoke-test-3",
+        "total_tokens": 0,
     }
     run_config = {
         "configurable": {
