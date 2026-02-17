@@ -25,7 +25,7 @@ def _interactive_setup(cwd: str) -> dict[str, str]:
 
     import yaml
 
-    from retrai.config import PROVIDER_MODELS
+    from retrai.config import get_provider_models
 
     console.print(
         Panel(
@@ -36,6 +36,7 @@ def _interactive_setup(cwd: str) -> dict[str, str]:
     )
 
     # 1. Pick provider
+    PROVIDER_MODELS = get_provider_models()
     providers = list(PROVIDER_MODELS.keys())
     console.print("\n[bold]Choose your AI provider:[/bold]")
     for i, name in enumerate(providers, 1):

@@ -6,54 +6,95 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Popular providers and their models for interactive setup
-PROVIDER_MODELS: dict[str, dict[str, Any]] = {
-    "Anthropic (Claude)": {
-        "models": [
-            "claude-sonnet-4-6",
-            "claude-opus-4",
-            "claude-sonnet-4-20250514",
-            "claude-haiku-3-5",
-        ],
+# Provider definitions — models are fetched dynamically from LiteLLM
+PROVIDER_DEFS: list[dict[str, Any]] = [
+    {
+        "name": "Anthropic (Claude)",
+        "prefix": "claude-",
         "env_var": "ANTHROPIC_API_KEY",
     },
-    "OpenAI": {
-        "models": [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "o3",
-            "o3-mini",
-            "o4-mini",
-        ],
+    {
+        "name": "OpenAI",
+        "prefixes": ["gpt-", "o1-", "o3-", "o4-", "chatgpt/"],
         "env_var": "OPENAI_API_KEY",
     },
-    "Google (Gemini)": {
-        "models": [
-            "gemini/gemini-2.5-pro",
-            "gemini/gemini-2.5-flash",
-            "gemini/gemini-2.0-flash",
-        ],
+    {
+        "name": "Google (Gemini)",
+        "prefix": "gemini/",
         "env_var": "GEMINI_API_KEY",
     },
-    "Azure OpenAI": {
-        "models": ["azure/gpt-4o", "azure/gpt-4o-mini"],
+    {
+        "name": "Azure OpenAI",
+        "prefix": "azure/",
         "env_var": "AZURE_API_KEY",
         "extra_env": ["AZURE_API_BASE", "AZURE_API_VERSION"],
     },
-    "Ollama (local)": {
-        "models": [
-            "ollama/llama3.1:70b",
-            "ollama/qwen2.5-coder:32b",
-            "ollama/deepseek-coder-v2",
-        ],
+    {
+        "name": "Ollama (local)",
+        "prefix": "ollama/",
         "env_var": None,
         "api_base": "http://localhost:11434",
     },
-    "Other (custom)": {
-        "models": [],
+    {
+        "name": "Other (custom)",
+        "prefix": None,
         "env_var": None,
     },
-}
+]
+
+
+def _pick_best_models(all_models: list[str], prefix: str, limit: int = 8) -> list[str]:
+    """Filter and rank models for a provider prefix from LiteLLM's registry."""
+    matched = [m for m in all_models if m.startswith(prefix)]
+
+    # Prefer `-latest` variants and skip overly specific dated ones
+    latest = [m for m in matched if m.endswith("-latest")]
+    non_dated = [
+        m for m in matched
+        if not any(c.isdigit() and len(c) >= 8 for c in m.split("-"))
+        or m.endswith("-latest")
+    ]
+    # Combine: latest first, then non-dated, then all — deduplicated
+    ranked: list[str] = []
+    seen: set[str] = set()
+    for m in latest + non_dated + matched:
+        if m not in seen:
+            ranked.append(m)
+            seen.add(m)
+
+    return ranked[:limit]
+
+
+def get_provider_models() -> dict[str, dict[str, Any]]:
+    """Build provider→models mapping dynamically from LiteLLM's model registry."""
+    try:
+        import litellm
+        all_models = sorted(litellm.model_cost.keys())
+    except Exception:
+        all_models = []
+
+    result: dict[str, dict[str, Any]] = {}
+    for pdef in PROVIDER_DEFS:
+        name = pdef["name"]
+        entry: dict[str, Any] = {
+            "env_var": pdef.get("env_var"),
+        }
+        # Copy extra fields
+        for key in ("extra_env", "api_base"):
+            if key in pdef:
+                entry[key] = pdef[key]
+
+        # Fetch models dynamically
+        prefixes = pdef.get("prefixes", [pdef.get("prefix")])
+        models: list[str] = []
+        for pfx in prefixes:
+            if pfx and all_models:
+                models.extend(_pick_best_models(all_models, pfx))
+
+        entry["models"] = models
+        result[name] = entry
+
+    return result
 
 
 @dataclass
