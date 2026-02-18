@@ -15,14 +15,26 @@ def _safe_resolve(path: str, cwd: str) -> Path:
     return full
 
 
-async def file_patch(path: str, old: str, new: str, cwd: str) -> str:
+async def file_patch(
+    path: str,
+    old: str,
+    new: str,
+    cwd: str,
+    occurrence: int = 1,
+) -> str:
     """Replace an exact occurrence of *old* with *new* in a file.
 
     Much more context-efficient than rewriting entire files — the LLM only
     needs to specify the exact text to find and its replacement.
 
-    Raises ``ValueError`` if *old* is not found or appears more than once.
-    Returns a confirmation string with the line number of the match.
+    Args:
+        occurrence: Which occurrence to replace (1-indexed).
+            - ``1`` (default): replace the first match; raises if multiple exist.
+            - ``N``: replace only the N-th match.
+            - ``0``: replace **all** occurrences.
+
+    Raises ``ValueError`` if *old* is not found or if the requested
+    occurrence exceeds the number of matches.
     """
     full_path = _safe_resolve(path, cwd)
 
@@ -36,17 +48,41 @@ async def file_patch(path: str, old: str, new: str, cwd: str) -> str:
         count = content.count(old)
         if count == 0:
             raise ValueError(f"Target text not found in {path}. Searched for: {old[:200]!r}")
-        if count > 1:
+
+        # Default behaviour: unique match required
+        if occurrence == 1 and count > 1:
             raise ValueError(
                 f"Target text found {count} times in {path} — must be unique. "
+                f"Use occurrence=N to target a specific match. "
                 f"Searched for: {old[:200]!r}"
             )
 
-        # Find the line number of the match
-        offset = content.index(old)
-        line_number = content[:offset].count("\n") + 1
+        if occurrence == 0:
+            # Replace all
+            patched = content.replace(old, new)
+            full_path.write_text(patched, encoding="utf-8")
+            return (
+                f"Patched all {count} occurrences in {path} "
+                f"({len(old)} chars → {len(new)} chars each)"
+            )
 
-        patched = content.replace(old, new, 1)
+        # Replace the N-th occurrence
+        if occurrence > count:
+            raise ValueError(
+                f"Requested occurrence {occurrence} but only {count} match(es) found in {path}"
+            )
+
+        # Walk through occurrences to find the right offset
+        offset = 0
+        for i in range(occurrence):
+            idx = content.index(old, offset)
+            if i == occurrence - 1:
+                offset = idx
+                break
+            offset = idx + len(old)
+
+        line_number = content[:offset].count("\n") + 1
+        patched = content[:offset] + new + content[offset + len(old) :]
         full_path.write_text(patched, encoding="utf-8")
         return f"Patched {path} at line {line_number} ({len(old)} chars → {len(new)} chars)"
 

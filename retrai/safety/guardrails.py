@@ -281,7 +281,48 @@ class SafetyGuard:
             size = len(content.encode("utf-8", errors="replace"))
             violations.extend(self.check_file_size(size))
 
+        elif tool_name == "file_delete":
+            path = args.get("path", "")
+            violations.extend(self.check_file_delete(path))
+
         return violations
+
+    def check_file_delete(self, path: str) -> list[SafetyViolation]:
+        """Check if a file deletion targets critical project files."""
+        critical_files = {
+            ".retrai.yml",
+            ".git",
+            ".gitignore",
+            "pyproject.toml",
+            "package.json",
+            "Cargo.toml",
+            "go.mod",
+            "Makefile",
+            "LICENSE",
+        }
+        # Normalise: strip leading ./ and trailing /
+        normalised = path.lstrip("./").rstrip("/")
+        basename = normalised.split("/")[-1] if "/" in normalised else normalised
+
+        if normalised in critical_files or basename in critical_files:
+            return [
+                SafetyViolation(
+                    rule="critical_file_delete",
+                    description=(
+                        f"Attempted to delete critical project file: '{path}'"
+                    ),
+                    risk_level=RiskLevel.HIGH,
+                )
+            ]
+        if normalised == ".git" or normalised.startswith(".git/"):
+            return [
+                SafetyViolation(
+                    rule="git_delete",
+                    description="Attempted to delete .git directory or its contents",
+                    risk_level=RiskLevel.CRITICAL,
+                )
+            ]
+        return []
 
     def should_block(self, violations: list[SafetyViolation]) -> bool:
         """Determine if violations should block execution."""

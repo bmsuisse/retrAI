@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig
 
 from retrai.agent.nodes.reflect import (
     _build_reflection_message,
@@ -124,7 +127,7 @@ def test_reflection_message_critical_escalation():
 async def test_reflect_node_skips_when_few_failures():
     """With < 2 consecutive failures, reflect should pass through."""
     state = _make_state(consecutive_failures=1)
-    config = {"configurable": {"event_bus": None}}
+    config = cast(RunnableConfig, {"configurable": {"event_bus": None}})
     result = await reflect_node(state, config)
     # Should not inject any messages
     assert "messages" not in result
@@ -140,7 +143,7 @@ async def test_reflect_node_injects_when_stuck():
             HumanMessage(content="Goal NOT YET achieved: test_add failed assertion"),
         ],
     )
-    config = {"configurable": {"event_bus": None}}
+    config = cast(RunnableConfig, {"configurable": {"event_bus": None}})
     result = await reflect_node(state, config)
     assert "messages" in result
     assert len(result["messages"]) == 1

@@ -176,8 +176,9 @@ class FilePatchTool(BaseTool):
             name=self.name,
             description=(
                 "Surgically replace text in a file. Finds an exact match "
-                "of 'old' and replaces it with 'new'. The old text must "
-                "appear exactly once."
+                "of 'old' and replaces it with 'new'. By default the old "
+                "text must appear exactly once; use 'occurrence' to target "
+                "a specific match or replace all."
             ),
             parameters={
                 "type": "object",
@@ -188,11 +189,20 @@ class FilePatchTool(BaseTool):
                     },
                     "old": {
                         "type": "string",
-                        "description": "Exact text to find (must be unique in file)",
+                        "description": "Exact text to find",
                     },
                     "new": {
                         "type": "string",
                         "description": "Replacement text",
+                    },
+                    "occurrence": {
+                        "type": "integer",
+                        "description": (
+                            "Which occurrence to replace (1-indexed). "
+                            "Default 1 (must be unique). "
+                            "Set to 0 to replace ALL occurrences."
+                        ),
+                        "default": 1,
                     },
                 },
                 "required": ["path", "old", "new"],
@@ -202,7 +212,128 @@ class FilePatchTool(BaseTool):
     async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
         from retrai.tools.file_patch import file_patch
 
-        result = await file_patch(args["path"], args["old"], args["new"], cwd)
+        result = await file_patch(
+            args["path"],
+            args["old"],
+            args["new"],
+            cwd,
+            occurrence=int(args.get("occurrence", 1)),
+        )
+        return result, False
+
+
+class FileDeleteTool(BaseTool):
+    """Delete a file or empty directory."""
+
+    name = "file_delete"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Delete a file or empty directory. Path is relative to "
+                "the project root. Refuses to delete non-empty directories."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File or directory path relative to project root",
+                    },
+                },
+                "required": ["path"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.file_delete import file_delete
+
+        result = await file_delete(args["path"], cwd)
+        return result, False
+
+
+class FileRenameTool(BaseTool):
+    """Rename or move a file within the project."""
+
+    name = "file_rename"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Rename or move a file within the project tree. Both source "
+                "and destination are relative to the project root. Creates "
+                "parent directories for the destination as needed."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "old_path": {
+                        "type": "string",
+                        "description": "Current file path (relative to project root)",
+                    },
+                    "new_path": {
+                        "type": "string",
+                        "description": "New file path (relative to project root)",
+                    },
+                },
+                "required": ["old_path", "new_path"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.file_rename import file_rename
+
+        result = await file_rename(args["old_path"], args["new_path"], cwd)
+        return result, False
+
+
+class FileInsertTool(BaseTool):
+    """Insert text at a specific line number."""
+
+    name = "file_insert"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Insert text at a specific line number in a file. "
+                "Line is 1-indexed. Inserts BEFORE the given line. "
+                "Use line=0 to prepend, or a very large number to append."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to project root",
+                    },
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number to insert before (1-indexed)",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Text to insert",
+                    },
+                },
+                "required": ["path", "line", "content"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.file_insert import file_insert
+
+        result = await file_insert(
+            args["path"],
+            int(args["line"]),
+            args["content"],
+            cwd,
+        )
         return result, False
 
 
@@ -1114,6 +1245,9 @@ ALL_BUILTIN_TOOLS: list[type[BaseTool]] = [
     FileListTool,
     FileWriteTool,
     FilePatchTool,
+    FileDeleteTool,
+    FileRenameTool,
+    FileInsertTool,
     GrepSearchTool,
     FindFilesTool,
     WebSearchTool,
