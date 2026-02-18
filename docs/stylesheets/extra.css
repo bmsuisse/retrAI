@@ -10,8 +10,10 @@
   --retrai-violet: #8b5cf6;
   --retrai-violet-light: #a78bfa;
   --retrai-violet-pale: #c4b5fd;
+  --retrai-violet-white: #ddd6fe;
   --retrai-text: #e6edf3;
-  --retrai-text-muted: #8b949e;
+  --retrai-text-muted: #9ca3af;
+  --retrai-text-subtle: #bcc5d0;
   --retrai-glow: rgba(139, 92, 246, 0.12);
 }
 
@@ -20,13 +22,13 @@
   --md-default-bg-color: var(--retrai-bg);
   --md-default-fg-color: var(--retrai-text);
   --md-primary-fg-color: var(--retrai-violet);
-  --md-primary-bg-color: var(--retrai-bg);
+  --md-primary-bg-color: var(--retrai-bg-surface);
   --md-accent-fg-color: var(--retrai-violet-light);
   --md-typeset-a-color: var(--retrai-violet-light);
   --md-code-bg-color: var(--retrai-bg-surface);
 }
 
-/* ── Header — single unified bar ── */
+/* ── Header — unified bar ── */
 [data-md-color-scheme="slate"] .md-header {
   background: var(--retrai-bg-surface) !important;
   border-bottom: 1px solid var(--retrai-border);
@@ -36,23 +38,36 @@
 [data-md-color-scheme="slate"] .md-header__title {
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--retrai-text) !important;
 }
 
-/* ── Tabs bar — blend with header ── */
+/* Header logo — fix the white bg on the PNG */
+[data-md-color-scheme="slate"] .md-header__button.md-logo img {
+  filter: drop-shadow(0 0 0 transparent);
+  mix-blend-mode: screen;
+  border-radius: 6px;
+}
+
+/* ── Navigation tabs — VISIBLE on dark bg ── */
 [data-md-color-scheme="slate"] .md-tabs {
   background: var(--retrai-bg-surface) !important;
   border-bottom: 1px solid var(--retrai-border);
 }
 
 [data-md-color-scheme="slate"] .md-tabs__link {
-  opacity: 0.65;
-  transition: opacity 0.2s ease;
+  color: var(--retrai-text-subtle) !important;
+  opacity: 1 !important;
+  font-weight: 500;
+  transition: color 0.2s ease;
 }
 
-[data-md-color-scheme="slate"] .md-tabs__link:hover,
+[data-md-color-scheme="slate"] .md-tabs__link:hover {
+  color: #fff !important;
+}
+
 [data-md-color-scheme="slate"] .md-tabs__link--active {
-  opacity: 1;
-  color: var(--retrai-violet-light) !important;
+  color: var(--retrai-violet-pale) !important;
+  font-weight: 600;
 }
 
 /* ── Page body ── */
@@ -65,13 +80,17 @@
   background: var(--retrai-bg) !important;
 }
 
+[data-md-color-scheme="slate"] .md-nav__link {
+  color: var(--retrai-text-muted) !important;
+}
+
 [data-md-color-scheme="slate"] .md-nav__link--active {
   color: var(--retrai-violet-light) !important;
   font-weight: 600;
 }
 
 [data-md-color-scheme="slate"] .md-nav__link:hover {
-  color: var(--retrai-violet-pale) !important;
+  color: var(--retrai-text) !important;
 }
 
 /* ── Hero section ── */
@@ -83,22 +102,22 @@
   margin-bottom: 2.5rem;
   border: 1px solid var(--retrai-border-focus);
   box-shadow:
-    0 0 60px var(--retrai-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 0 80px var(--retrai-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   position: relative;
   overflow: hidden;
 }
 
-/* Subtle gradient glow behind hero */
+/* Gradient glow behind hero */
 .hero::before {
   content: "";
   position: absolute;
-  top: -40%;
+  top: -50%;
   left: 50%;
   transform: translateX(-50%);
-  width: 600px;
-  height: 400px;
-  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.15) 0%, transparent 65%);
   pointer-events: none;
   z-index: 0;
 }
@@ -108,11 +127,21 @@
   z-index: 1;
 }
 
+/* Hero logo — remove white background */
+.hero img {
+  mix-blend-mode: screen;
+  border-radius: 12px;
+}
+
 .hero h1 {
   font-size: 3.2rem;
   font-weight: 900;
   letter-spacing: -0.04em;
-  background: linear-gradient(135deg, var(--retrai-violet-pale) 0%, var(--retrai-violet-light) 40%, var(--retrai-violet) 100%);
+  background: linear-gradient(135deg,
+      #fff 0%,
+      var(--retrai-violet-white) 25%,
+      var(--retrai-violet-pale) 50%,
+      var(--retrai-violet-light) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -120,8 +149,8 @@
 }
 
 .hero p {
-  color: var(--retrai-text-muted);
-  font-size: 1.15rem;
+  color: var(--retrai-text-subtle);
+  font-size: 1.2rem;
   max-width: 540px;
   margin: 0 auto 2rem;
   line-height: 1.6;
@@ -129,9 +158,9 @@
 
 .hero .badge {
   display: inline-block;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: var(--retrai-violet-light);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: var(--retrai-violet-pale);
   border-radius: 999px;
   padding: 0.3rem 0.9rem;
   font-size: 0.82rem;
@@ -141,8 +170,8 @@
 }
 
 .hero .badge:hover {
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.22);
+  border-color: rgba(139, 92, 246, 0.55);
   transform: translateY(-1px);
 }
 
@@ -191,7 +220,7 @@
 
 [data-md-color-scheme="slate"] .md-typeset .grid.cards>ul>li:hover {
   border-color: var(--retrai-border-focus) !important;
-  box-shadow: 0 0 20px var(--retrai-glow);
+  box-shadow: 0 0 24px var(--retrai-glow);
 }
 
 /* ── Mermaid diagrams ── */
@@ -251,7 +280,7 @@
   border-bottom-color: var(--retrai-violet-light);
 }
 
-/* ── Tabs (content tabs) ── */
+/* ── Content tabs ── */
 [data-md-color-scheme="slate"] .md-typeset .tabbed-labels>label {
   color: var(--retrai-text-muted);
 }
@@ -259,4 +288,16 @@
 [data-md-color-scheme="slate"] .md-typeset .tabbed-labels>label--active,
 [data-md-color-scheme="slate"] .md-typeset .tabbed-labels>label:hover {
   color: var(--retrai-violet-light);
+}
+
+/* ── Headings ── */
+[data-md-color-scheme="slate"] .md-typeset h1,
+[data-md-color-scheme="slate"] .md-typeset h2 {
+  color: var(--retrai-text) !important;
+  font-weight: 700;
+}
+
+[data-md-color-scheme="slate"] .md-typeset h2 {
+  border-bottom: 1px solid var(--retrai-border);
+  padding-bottom: 0.4rem;
 }
