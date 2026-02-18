@@ -56,9 +56,9 @@ def _pick_best_models(all_models: list[str], prefix: str, limit: int = 8) -> lis
     # Prefer `-latest` variants and skip overly specific dated ones
     latest = [m for m in matched if m.endswith("-latest")]
     non_dated = [
-        m for m in matched
-        if not any(c.isdigit() and len(c) >= 8 for c in m.split("-"))
-        or m.endswith("-latest")
+        m
+        for m in matched
+        if not any(c.isdigit() and len(c) >= 8 for c in m.split("-")) or m.endswith("-latest")
     ]
     # Combine: latest first, then non-dated, then all — deduplicated
     ranked: list[str] = []
@@ -75,6 +75,7 @@ def get_provider_models() -> dict[str, dict[str, Any]]:
     """Build provider→models mapping dynamically from LiteLLM's model registry."""
     try:
         import litellm
+
         all_models = sorted(litellm.model_cost.keys())
     except (ImportError, AttributeError):
         all_models = []
@@ -97,6 +98,7 @@ def get_provider_models() -> dict[str, dict[str, Any]]:
                     _load_auth,
                     list_copilot_models,
                 )
+
                 auth = _load_auth()
                 gh_token = auth.get("github_oauth_token")
                 if gh_token:
@@ -165,4 +167,3 @@ def load_config(cwd: str) -> dict[str, Any] | None:
     with config_path.open() as f:
         data = yaml.safe_load(f)
     return data if isinstance(data, dict) else None
-

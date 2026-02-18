@@ -16,23 +16,25 @@ logger = logging.getLogger(__name__)
 MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024
 
 # Trusted scientific domains for URL fetching
-TRUSTED_DOMAINS: frozenset[str] = frozenset({
-    "ncbi.nlm.nih.gov",
-    "eutils.ncbi.nlm.nih.gov",
-    "arxiv.org",
-    "export.arxiv.org",
-    "huggingface.co",
-    "raw.githubusercontent.com",
-    "data.gov",
-    "zenodo.org",
-    "figshare.com",
-    "kaggle.com",
-    "datadryad.org",
-    "openalex.org",
-    "api.openalex.org",
-    "api.semanticscholar.org",
-    "api.crossref.org",
-})
+TRUSTED_DOMAINS: frozenset[str] = frozenset(
+    {
+        "ncbi.nlm.nih.gov",
+        "eutils.ncbi.nlm.nih.gov",
+        "arxiv.org",
+        "export.arxiv.org",
+        "huggingface.co",
+        "raw.githubusercontent.com",
+        "data.gov",
+        "zenodo.org",
+        "figshare.com",
+        "kaggle.com",
+        "datadryad.org",
+        "openalex.org",
+        "api.openalex.org",
+        "api.semanticscholar.org",
+        "api.crossref.org",
+    }
+)
 
 
 @dataclass
@@ -49,18 +51,25 @@ class FetchResult:
 async def _http_get(url: str, timeout: float = 30.0) -> tuple[str, int]:
     """Perform an async HTTP GET. Returns (body, status_code)."""
     proc = await asyncio.create_subprocess_exec(
-        "curl", "-sS", "-L",
-        "--max-time", str(int(timeout)),
-        "--max-filesize", str(MAX_DOWNLOAD_BYTES),
-        "-H", "Accept: application/json",
-        "-w", "\n__STATUS__%{http_code}",
+        "curl",
+        "-sS",
+        "-L",
+        "--max-time",
+        str(int(timeout)),
+        "--max-filesize",
+        str(MAX_DOWNLOAD_BYTES),
+        "-H",
+        "Accept: application/json",
+        "-w",
+        "\n__STATUS__%{http_code}",
         url,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
         stdout_bytes, _ = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout + 5,
+            proc.communicate(),
+            timeout=timeout + 5,
         )
     except TimeoutError:
         proc.kill()
@@ -86,17 +95,23 @@ async def _http_get(url: str, timeout: float = 30.0) -> tuple[str, int]:
 async def _http_get_xml(url: str, timeout: float = 30.0) -> tuple[str, int]:
     """HTTP GET expecting XML response."""
     proc = await asyncio.create_subprocess_exec(
-        "curl", "-sS", "-L",
-        "--max-time", str(int(timeout)),
-        "-H", "Accept: application/xml",
-        "-w", "\n__STATUS__%{http_code}",
+        "curl",
+        "-sS",
+        "-L",
+        "--max-time",
+        str(int(timeout)),
+        "-H",
+        "Accept: application/xml",
+        "-w",
+        "\n__STATUS__%{http_code}",
         url,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
         stdout_bytes, _ = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout + 5,
+            proc.communicate(),
+            timeout=timeout + 5,
         )
     except TimeoutError:
         proc.kill()
@@ -133,7 +148,10 @@ async def search_pubmed(
     body, status = await _http_get(search_url)
     if status != 200:
         return FetchResult(
-            source="pubmed", query=query, total_results=0, items=[],
+            source="pubmed",
+            query=query,
+            total_results=0,
+            items=[],
             error=f"PubMed search failed (HTTP {status})",
         )
 
@@ -143,7 +161,10 @@ async def search_pubmed(
         total = int(data.get("esearchresult", {}).get("count", 0))
     except (json.JSONDecodeError, KeyError, ValueError):
         return FetchResult(
-            source="pubmed", query=query, total_results=0, items=[],
+            source="pubmed",
+            query=query,
+            total_results=0,
+            items=[],
             error="Failed to parse PubMed search results",
         )
 
@@ -159,7 +180,10 @@ async def search_pubmed(
     body, status = await _http_get(summary_url)
     if status != 200:
         return FetchResult(
-            source="pubmed", query=query, total_results=total, items=[],
+            source="pubmed",
+            query=query,
+            total_results=total,
+            items=[],
             error=f"PubMed summary fetch failed (HTTP {status})",
         )
 
@@ -171,22 +195,23 @@ async def search_pubmed(
             article = result_data.get(pmid, {})
             if not isinstance(article, dict):
                 continue
-            authors = [
-                a.get("name", "")
-                for a in article.get("authors", [])
-                if isinstance(a, dict)
-            ]
-            items.append({
-                "pmid": pmid,
-                "title": article.get("title", ""),
-                "authors": authors[:5],
-                "journal": article.get("fulljournalname", ""),
-                "pub_date": article.get("pubdate", ""),
-                "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
-            })
+            authors = [a.get("name", "") for a in article.get("authors", []) if isinstance(a, dict)]
+            items.append(
+                {
+                    "pmid": pmid,
+                    "title": article.get("title", ""),
+                    "authors": authors[:5],
+                    "journal": article.get("fulljournalname", ""),
+                    "pub_date": article.get("pubdate", ""),
+                    "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+                }
+            )
     except (json.JSONDecodeError, KeyError):
         return FetchResult(
-            source="pubmed", query=query, total_results=total, items=[],
+            source="pubmed",
+            query=query,
+            total_results=total,
+            items=[],
             error="Failed to parse PubMed summaries",
         )
 
@@ -206,7 +231,10 @@ async def search_arxiv(
     body, status = await _http_get_xml(url)
     if status != 200:
         return FetchResult(
-            source="arxiv", query=query, total_results=0, items=[],
+            source="arxiv",
+            query=query,
+            total_results=0,
+            items=[],
             error=f"arXiv search failed (HTTP {status})",
         )
 
@@ -214,7 +242,10 @@ async def search_arxiv(
     total = 0
     try:
         root = ET.fromstring(body)
-        ns = {"atom": "http://www.w3.org/2005/Atom", "opensearch": "http://a9.com/-/spec/opensearch/1.1/"}
+        ns = {
+            "atom": "http://www.w3.org/2005/Atom",
+            "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
+        }
         total_el = root.find("opensearch:totalResults", ns)
         if total_el is not None and total_el.text:
             total = int(total_el.text)
@@ -238,17 +269,24 @@ async def search_arxiv(
                 if term:
                     categories.append(term)
 
-            items.append({
-                "title": (title_el.text or "").strip() if title_el is not None else "",
-                "abstract": (summary_el.text or "").strip()[:500] if summary_el is not None else "",
-                "authors": authors[:5],
-                "published": (published_el.text or "") if published_el is not None else "",
-                "categories": categories[:5],
-                "url": (id_el.text or "") if id_el is not None else "",
-            })
+            items.append(
+                {
+                    "title": (title_el.text or "").strip() if title_el is not None else "",
+                    "abstract": (summary_el.text or "").strip()[:500]
+                    if summary_el is not None
+                    else "",
+                    "authors": authors[:5],
+                    "published": (published_el.text or "") if published_el is not None else "",
+                    "categories": categories[:5],
+                    "url": (id_el.text or "") if id_el is not None else "",
+                }
+            )
     except ET.ParseError:
         return FetchResult(
-            source="arxiv", query=query, total_results=0, items=[],
+            source="arxiv",
+            query=query,
+            total_results=0,
+            items=[],
             error="Failed to parse arXiv XML response",
         )
 
@@ -268,7 +306,10 @@ async def search_huggingface(
     body, status = await _http_get(url)
     if status != 200:
         return FetchResult(
-            source="huggingface", query=query, total_results=0, items=[],
+            source="huggingface",
+            query=query,
+            total_results=0,
+            items=[],
             error=f"HuggingFace API failed (HTTP {status})",
         )
 
@@ -279,22 +320,30 @@ async def search_huggingface(
             datasets = []
 
         for ds in datasets[:max_results]:
-            items.append({
-                "id": ds.get("id", ""),
-                "description": (ds.get("description", "") or "")[:300],
-                "downloads": ds.get("downloads", 0),
-                "likes": ds.get("likes", 0),
-                "tags": ds.get("tags", [])[:10],
-                "url": f"https://huggingface.co/datasets/{ds.get('id', '')}",
-            })
+            items.append(
+                {
+                    "id": ds.get("id", ""),
+                    "description": (ds.get("description", "") or "")[:300],
+                    "downloads": ds.get("downloads", 0),
+                    "likes": ds.get("likes", 0),
+                    "tags": ds.get("tags", [])[:10],
+                    "url": f"https://huggingface.co/datasets/{ds.get('id', '')}",
+                }
+            )
     except (json.JSONDecodeError, KeyError):
         return FetchResult(
-            source="huggingface", query=query, total_results=0, items=[],
+            source="huggingface",
+            query=query,
+            total_results=0,
+            items=[],
             error="Failed to parse HuggingFace response",
         )
 
     return FetchResult(
-        source="huggingface", query=query, total_results=len(items), items=items,
+        source="huggingface",
+        query=query,
+        total_results=len(items),
+        items=items,
     )
 
 
@@ -314,7 +363,10 @@ async def fetch_url(
     is_trusted = any(domain.endswith(d) for d in TRUSTED_DOMAINS)
     if not is_trusted:
         return FetchResult(
-            source="url", query=url, total_results=0, items=[],
+            source="url",
+            query=url,
+            total_results=0,
+            items=[],
             error=(
                 f"Domain '{domain}' is not in the trusted domains list. "
                 f"Trusted: {', '.join(sorted(TRUSTED_DOMAINS)[:5])}..."
@@ -324,7 +376,10 @@ async def fetch_url(
     body, status = await _http_get(url, timeout=60.0)
     if status != 200:
         return FetchResult(
-            source="url", query=url, total_results=0, items=[],
+            source="url",
+            query=url,
+            total_results=0,
+            items=[],
             error=f"URL fetch failed (HTTP {status})",
         )
 
@@ -334,13 +389,17 @@ async def fetch_url(
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(body, encoding="utf-8")
         return FetchResult(
-            source="url", query=url, total_results=1,
+            source="url",
+            query=url,
+            total_results=1,
             items=[{"saved_to": str(out_path), "size_bytes": len(body.encode())}],
         )
 
     # Return preview
     return FetchResult(
-        source="url", query=url, total_results=1,
+        source="url",
+        query=url,
+        total_results=1,
         items=[{"content_preview": body[:2000], "size_bytes": len(body.encode())}],
     )
 
@@ -377,7 +436,10 @@ async def dataset_fetch(
         result = await fetch_url(query, save_path, cwd)
     else:
         result = FetchResult(
-            source=source, query=query, total_results=0, items=[],
+            source=source,
+            query=query,
+            total_results=0,
+            items=[],
             error=f"Unknown source '{source}'. Use: pubmed, arxiv, huggingface, url",
         )
 

@@ -54,7 +54,8 @@ class TestResearchGoalCheck:
 
     @pytest.mark.asyncio
     async def test_50_percent_with_literature_and_data(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         goal = ResearchGoal(topic="test")
         out_dir = tmp_path / ".retrai" / "research"
@@ -70,7 +71,8 @@ class TestResearchGoalCheck:
 
     @pytest.mark.asyncio
     async def test_75_percent_with_experiment(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         goal = ResearchGoal(topic="test")
         out_dir = tmp_path / ".retrai" / "research"
@@ -83,17 +85,21 @@ class TestResearchGoalCheck:
         exp_dir = tmp_path / ".retrai" / "experiments"
         exp_dir.mkdir(parents=True)
         exp_file = exp_dir / "exp-001.json"
-        exp_file.write_text(json.dumps({
-            "id": "exp-001",
-            "name": "test",
-            "hypothesis": "h",
-            "parameters": {},
-            "metrics": {},
-            "result": "ok",
-            "tags": [],
-            "notes": "",
-            "created_at": "2026-01-01T00:00:00",
-        }))
+        exp_file.write_text(
+            json.dumps(
+                {
+                    "id": "exp-001",
+                    "name": "test",
+                    "hypothesis": "h",
+                    "parameters": {},
+                    "metrics": {},
+                    "result": "ok",
+                    "tags": [],
+                    "notes": "",
+                    "created_at": "2026-01-01T00:00:00",
+                }
+            )
+        )
 
         result = await goal.check({}, str(tmp_path))
         assert not result.achieved
@@ -113,11 +119,21 @@ class TestResearchGoalCheck:
         # Experiment
         exp_dir = tmp_path / ".retrai" / "experiments"
         exp_dir.mkdir(parents=True)
-        (exp_dir / "exp-001.json").write_text(json.dumps({
-            "id": "exp-001", "name": "t", "hypothesis": "",
-            "parameters": {}, "metrics": {}, "result": "",
-            "tags": [], "notes": "", "created_at": "2026-01-01",
-        }))
+        (exp_dir / "exp-001.json").write_text(
+            json.dumps(
+                {
+                    "id": "exp-001",
+                    "name": "t",
+                    "hypothesis": "",
+                    "parameters": {},
+                    "metrics": {},
+                    "result": "",
+                    "tags": [],
+                    "notes": "",
+                    "created_at": "2026-01-01",
+                }
+            )
+        )
 
         result = await goal.check({}, str(tmp_path))
         assert result.achieved

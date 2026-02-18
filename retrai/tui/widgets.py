@@ -27,8 +27,14 @@ LOGO_ART = r"""
 """
 
 GRADIENT_COLORS = [
-    "#e879f9", "#d946ef", "#c026d3", "#a855f7",
-    "#8b5cf6", "#7c3aed", "#6d28d9", "#5b21b6",
+    "#e879f9",
+    "#d946ef",
+    "#c026d3",
+    "#a855f7",
+    "#8b5cf6",
+    "#7c3aed",
+    "#6d28d9",
+    "#5b21b6",
 ]
 
 STATUS_STYLES: dict[str, tuple[str, str]] = {
@@ -54,6 +60,7 @@ def build_gradient_logo() -> Text:
 
 
 # ── Status Panel (sidebar) ────────────────────────────────────
+
 
 class StatusPanel(Static):
     """Sidebar panel showing run config, live timer, and status."""
@@ -120,8 +127,7 @@ class StatusPanel(Static):
         pct = min(100, round((value / max(self._max, 1)) * 100))
         try:
             self.query_one("#iter-info", Label).update(
-                f"[dim]Iter:[/dim]  [#e2e8f0]{value}/{self._max}[/#e2e8f0]"
-                f"  [dim]{pct}%[/dim]"
+                f"[dim]Iter:[/dim]  [#e2e8f0]{value}/{self._max}[/#e2e8f0]  [dim]{pct}%[/dim]"
             )
             self.query_one("#iteration-progress", ProgressBar).update(
                 progress=value,
@@ -134,9 +140,7 @@ class StatusPanel(Static):
         m = int((value % 3600) // 60)
         s = int(value % 60)
         try:
-            self.query_one("#timer-label", Label).update(
-                f"⏱  {h:02d}:{m:02d}:{s:02d}"
-            )
+            self.query_one("#timer-label", Label).update(f"⏱  {h:02d}:{m:02d}:{s:02d}")
         except NoMatches:
             pass
 
@@ -166,6 +170,7 @@ class StatusPanel(Static):
 
 # ── Tool Stats Panel (sidebar) ────────────────────────────────
 
+
 class ToolStatsPanel(Static):
     """Compact sidebar panel showing tool call counts."""
 
@@ -188,9 +193,7 @@ class ToolStatsPanel(Static):
         if not self._counts:
             return
         lines: list[str] = []
-        for tool, count in sorted(
-            self._counts.items(), key=lambda x: x[1], reverse=True
-        ):
+        for tool, count in sorted(self._counts.items(), key=lambda x: x[1], reverse=True):
             errs = self._errors.get(tool, 0)
             if errs:
                 lines.append(
@@ -199,10 +202,7 @@ class ToolStatsPanel(Static):
                     f"[#f87171]({errs}✗)[/#f87171]"
                 )
             else:
-                lines.append(
-                    f"[#38bdf8]{tool}[/#38bdf8] "
-                    f"[#4ade80]{count}×[/#4ade80]"
-                )
+                lines.append(f"[#38bdf8]{tool}[/#38bdf8] [#4ade80]{count}×[/#4ade80]")
         try:
             self.query_one("#tool-stats-body", Label).update("\n".join(lines))
         except NoMatches:
@@ -210,6 +210,7 @@ class ToolStatsPanel(Static):
 
 
 # ── Token Sparkline (sidebar) ─────────────────────────────────
+
 
 class TokenSparklineWidget(Static):
     """Miniature sparkline showing token usage per iteration."""
@@ -232,6 +233,7 @@ class TokenSparklineWidget(Static):
 
 # ── Iteration Timeline ────────────────────────────────────────
 
+
 class IterationTimeline(Static):
     """Horizontal timeline showing iteration outcomes at a glance."""
 
@@ -252,9 +254,7 @@ class IterationTimeline(Static):
         else:
             self._markers.append("[#f87171]○[/#f87171]")
         try:
-            self.query_one("#timeline-markers", Label).update(
-                " ".join(self._markers)
-            )
+            self.query_one("#timeline-markers", Label).update(" ".join(self._markers))
         except NoMatches:
             pass
 
@@ -262,9 +262,7 @@ class IterationTimeline(Static):
         """Add an in-progress marker (replaced on completion)."""
         self._markers.append("[#a78bfa]◎[/#a78bfa]")
         try:
-            self.query_one("#timeline-markers", Label).update(
-                " ".join(self._markers)
-            )
+            self.query_one("#timeline-markers", Label).update(" ".join(self._markers))
         except NoMatches:
             pass
 
@@ -276,6 +274,7 @@ class IterationTimeline(Static):
 
 
 # ── Tool Usage DataTable (dashboard tab) ──────────────────────
+
 
 class ToolUsageTable(Static):
     """Full DataTable showing tool call stats."""
@@ -317,8 +316,8 @@ class ToolUsageTable(Static):
                 calls = stats["calls"]
                 errors = stats["errors"]
                 success = round(((calls - errors) / max(calls, 1)) * 100)
-                success_color = "#4ade80" if success >= 80 else (
-                    "#fbbf24" if success >= 50 else "#f87171"
+                success_color = (
+                    "#4ade80" if success >= 80 else ("#fbbf24" if success >= 50 else "#f87171")
                 )
                 table.add_row(
                     f"[#38bdf8]{tool}[/#38bdf8]",
@@ -331,6 +330,7 @@ class ToolUsageTable(Static):
 
 
 # ── Dashboard Sparkline (large) ───────────────────────────────
+
 
 class DashboardSparkline(Static):
     """Large sparkline for the dashboard tab."""
@@ -355,6 +355,7 @@ class DashboardSparkline(Static):
 
 
 # ── File Tree Widget ──────────────────────────────────────────
+
 
 class FileTreeWidget(Static):
     """Tree view showing files the agent has touched."""

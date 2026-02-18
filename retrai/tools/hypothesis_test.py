@@ -41,14 +41,21 @@ async def hypothesis_test(
     test_type = test_type.lower().strip()
 
     valid_tests = {
-        "ttest", "ttest_paired", "ttest_1samp",
-        "chi2", "mann_whitney", "anova",
-        "shapiro", "pearson",
+        "ttest",
+        "ttest_paired",
+        "ttest_1samp",
+        "chi2",
+        "mann_whitney",
+        "anova",
+        "shapiro",
+        "pearson",
     }
     if test_type not in valid_tests:
-        return json.dumps({
-            "error": f"Unknown test '{test_type}'. Valid: {', '.join(sorted(valid_tests))}",
-        })
+        return json.dumps(
+            {
+                "error": f"Unknown test '{test_type}'. Valid: {', '.join(sorted(valid_tests))}",
+            }
+        )
 
     code = _build_test_code(
         test_type=test_type,
@@ -71,20 +78,24 @@ async def hypothesis_test(
         return json.dumps({"error": "Test timed out (60s limit)"})
 
     if result.returncode != 0:
-        return json.dumps({
-            "error": f"Test failed (exit {result.returncode})",
-            "stderr": result.stderr[:2000],
-        })
+        return json.dumps(
+            {
+                "error": f"Test failed (exit {result.returncode})",
+                "stderr": result.stderr[:2000],
+            }
+        )
 
     stdout = result.stdout.strip()
     try:
         parsed = json.loads(stdout)
         return json.dumps(parsed, indent=2, default=str)
     except json.JSONDecodeError:
-        return json.dumps({
-            "test_type": test_type,
-            "raw_output": stdout[:4000],
-        })
+        return json.dumps(
+            {
+                "test_type": test_type,
+                "raw_output": stdout[:4000],
+            }
+        )
 
 
 def _build_test_code(

@@ -114,7 +114,9 @@ class MlOptimizeGoal(GoalBase):
         )
 
     def _extract_best_metric(
-        self, state: dict, metric_name: str,
+        self,
+        state: dict,
+        metric_name: str,
     ) -> float | None:
         """Extract the best metric value from tool results in the state."""
         best: float | None = None

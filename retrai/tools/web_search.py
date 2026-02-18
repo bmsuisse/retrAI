@@ -51,9 +51,11 @@ def _search_sync(query: str, max_results: int) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         for topic in data.get("RelatedTopics", [])[:max_results]:
             if "Text" in topic and "FirstURL" in topic:
-                results.append({
-                    "title": topic.get("Text", "")[:80],
-                    "href": topic["FirstURL"],
-                    "body": topic.get("Text", ""),
-                })
+                results.append(
+                    {
+                        "title": topic.get("Text", "")[:80],
+                        "href": topic["FirstURL"],
+                        "body": topic.get("Text", ""),
+                    }
+                )
         return results

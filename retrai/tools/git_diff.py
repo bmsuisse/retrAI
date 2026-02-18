@@ -65,7 +65,8 @@ async def git_log(cwd: str, count: int = 10) -> str:
     """
     result = await _run_git(
         [
-            "git", "log",
+            "git",
+            "log",
             f"-{count}",
             "--oneline",
             "--no-decorate",
@@ -81,6 +82,7 @@ async def git_log(cwd: str, count: int = 10) -> str:
 
 async def _run_git(cmd: list[str], cwd: str) -> GitResult:
     """Execute a git command asynchronously."""
+
     def _run() -> GitResult:
         try:
             proc = subprocess.run(

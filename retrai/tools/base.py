@@ -21,11 +21,13 @@ class ToolSchema:
 
     name: str
     description: str
-    parameters: dict[str, Any] = field(default_factory=lambda: {
-        "type": "object",
-        "properties": {},
-        "required": [],
-    })
+    parameters: dict[str, Any] = field(
+        default_factory=lambda: {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -110,9 +112,7 @@ class ToolRegistry:
     def register(self, tool: BaseTool) -> None:
         """Register a tool instance. Overwrites if name already exists."""
         if not tool.name:
-            raise ValueError(
-                f"{type(tool).__name__} has no 'name' class variable set"
-            )
+            raise ValueError(f"{type(tool).__name__} has no 'name' class variable set")
         self._tools[tool.name] = tool
 
     def register_many(self, tools: list[BaseTool]) -> None:
@@ -163,7 +163,8 @@ class ToolRegistry:
                 else:
                     logger.warning(
                         "Entry point '%s' did not resolve to a BaseTool: %s",
-                        ep.name, type(obj),
+                        ep.name,
+                        type(obj),
                     )
             except Exception:
                 logger.exception("Failed to load tool entry point '%s'", ep.name)
@@ -187,7 +188,10 @@ class ToolRegistry:
         return len(self._tools)
 
     async def dispatch(
-        self, name: str, args: dict[str, Any], cwd: str,
+        self,
+        name: str,
+        args: dict[str, Any],
+        cwd: str,
     ) -> tuple[str, bool]:
         """Dispatch a tool call by name. Returns ``(content, is_error)``."""
         tool = self._tools.get(name)
@@ -216,6 +220,4 @@ class ToolRegistry:
 
     def parallel_safe_names(self) -> frozenset[str]:
         """Return the set of tool names that are safe to run in parallel."""
-        return frozenset(
-            name for name, tool in self._tools.items() if tool.parallel_safe
-        )
+        return frozenset(name for name, tool in self._tools.items() if tool.parallel_safe)

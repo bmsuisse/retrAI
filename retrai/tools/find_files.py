@@ -7,11 +7,24 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # Directories to always skip
-_SKIP_DIRS = frozenset({
-    ".git", "node_modules", "__pycache__", ".venv", "venv",
-    ".tox", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-    "dist", "build", ".eggs", "target", "vendor",
-})
+_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".tox",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "dist",
+        "build",
+        ".eggs",
+        "target",
+        "vendor",
+    }
+)
 
 
 @dataclass

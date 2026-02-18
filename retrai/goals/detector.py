@@ -62,10 +62,20 @@ def detect_goal(cwd: str) -> str | None:
 def detect_research_goal(description: str) -> bool:
     """Return True if the description hints at a research task."""
     research_keywords = {
-        "research", "investigate", "study", "scientific",
-        "literature review", "hypothesis", "experiment",
-        "analyze data", "statistical analysis", "pubmed",
-        "arxiv", "dataset", "correlation", "p-value",
+        "research",
+        "investigate",
+        "study",
+        "scientific",
+        "literature review",
+        "hypothesis",
+        "experiment",
+        "analyze data",
+        "statistical analysis",
+        "pubmed",
+        "arxiv",
+        "dataset",
+        "correlation",
+        "p-value",
     }
     desc_lower = description.lower()
     return any(kw in desc_lower for kw in research_keywords)

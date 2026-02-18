@@ -110,9 +110,7 @@ class TestFormatReview:
 class TestRunReview:
     @pytest.mark.asyncio
     async def test_no_changes(self):
-        with patch(
-            "retrai.tools.git_diff.git_diff", new_callable=AsyncMock
-        ) as mock_diff:
+        with patch("retrai.tools.git_diff.git_diff", new_callable=AsyncMock) as mock_diff:
             mock_diff.return_value = ""
             result = await run_review(cwd="/tmp", model_name="test")
             assert result.score == 100
@@ -128,9 +126,7 @@ class TestRunReview:
         )
 
         with (
-            patch(
-                "retrai.tools.git_diff.git_diff", new_callable=AsyncMock
-            ) as mock_diff,
+            patch("retrai.tools.git_diff.git_diff", new_callable=AsyncMock) as mock_diff,
             patch("retrai.llm.factory.get_llm", return_value=mock_llm),
         ):
             mock_diff.return_value = "diff --git a/main.py\n+hello"

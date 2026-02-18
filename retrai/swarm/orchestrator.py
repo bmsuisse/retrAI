@@ -90,9 +90,7 @@ class SwarmOrchestrator:
             total_iterations=total_iterations,
         )
 
-    async def _dispatch_workers(
-        self, subtasks: list[SubTask]
-    ) -> list[WorkerResult]:
+    async def _dispatch_workers(self, subtasks: list[SubTask]) -> list[WorkerResult]:
         """Run all workers concurrently."""
         tasks = [
             run_worker(
@@ -167,10 +165,6 @@ Be concise (max 300 words)."""
             logger.error("Synthesis failed: %s", e)
             # Fallback: concatenate findings
             achieved = sum(1 for r in results if r.status == "achieved")
-            return (
-                f"{achieved}/{len(results)} workers completed successfully.\n\n"
-                + "\n".join(
-                    f"- {r.task_id}: {r.status} — {r.findings[:200]}"
-                    for r in results
-                )
+            return f"{achieved}/{len(results)} workers completed successfully.\n\n" + "\n".join(
+                f"- {r.task_id}: {r.status} — {r.findings[:200]}" for r in results
             )

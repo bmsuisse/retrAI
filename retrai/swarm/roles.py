@@ -39,8 +39,12 @@ Research methodology:
 Always cite your sources with titles, authors, and URLs.
 """,
         preferred_tools=[
-            "dataset_fetch", "web_search", "file_read", "file_write",
-            "file_list", "grep_search",
+            "dataset_fetch",
+            "web_search",
+            "file_read",
+            "file_write",
+            "file_list",
+            "grep_search",
         ],
     ),
     "analyst": ResearchRole(
@@ -72,8 +76,12 @@ Choose the RIGHT statistical test:
 Always report: test statistic, p-value, effect size, sample size, and interpretation.
 """,
         preferred_tools=[
-            "data_analysis", "hypothesis_test", "experiment_log",
-            "experiment_list", "python_exec", "file_read",
+            "data_analysis",
+            "hypothesis_test",
+            "experiment_log",
+            "experiment_list",
+            "python_exec",
+            "file_read",
         ],
     ),
     "reviewer": ResearchRole(
@@ -106,8 +114,11 @@ Common issues to flag:
 - Confusing correlation with causation
 """,
         preferred_tools=[
-            "experiment_list", "file_read", "data_analysis",
-            "hypothesis_test", "grep_search",
+            "experiment_list",
+            "file_read",
+            "data_analysis",
+            "hypothesis_test",
+            "grep_search",
         ],
     ),
     "synthesizer": ResearchRole(
@@ -140,8 +151,11 @@ Writing guidelines:
 - Prioritize actionable insights
 """,
         preferred_tools=[
-            "experiment_list", "file_read", "file_write",
-            "grep_search", "find_files",
+            "experiment_list",
+            "file_read",
+            "file_write",
+            "grep_search",
+            "find_files",
         ],
     ),
 }

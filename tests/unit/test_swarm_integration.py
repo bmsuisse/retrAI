@@ -13,49 +13,59 @@ class TestDecomposerRoleParsing:
     """Test that the decomposer parses role fields from LLM responses."""
 
     def test_parses_role_from_json(self) -> None:
-        content = json.dumps([
-            {
-                "id": "task-1",
-                "description": "Search for papers",
-                "focus_files": [],
-                "strategy_hint": "Use PubMed",
-                "role": "researcher",
-            },
-            {
-                "id": "task-2",
-                "description": "Analyze data",
-                "focus_files": ["data/"],
-                "strategy_hint": "Use data_analysis",
-                "role": "analyst",
-            },
-        ])
+        content = json.dumps(
+            [
+                {
+                    "id": "task-1",
+                    "description": "Search for papers",
+                    "focus_files": [],
+                    "strategy_hint": "Use PubMed",
+                    "role": "researcher",
+                },
+                {
+                    "id": "task-2",
+                    "description": "Analyze data",
+                    "focus_files": ["data/"],
+                    "strategy_hint": "Use data_analysis",
+                    "role": "analyst",
+                },
+            ]
+        )
         subtasks = _parse_subtasks(content)
         assert len(subtasks) == 2
         assert subtasks[0].role == "researcher"
         assert subtasks[1].role == "analyst"
 
     def test_empty_role_when_not_provided(self) -> None:
-        content = json.dumps([
-            {
-                "id": "task-1",
-                "description": "Fix a bug",
-                "focus_files": ["src/main.py"],
-                "strategy_hint": "Debug it",
-            },
-        ])
+        content = json.dumps(
+            [
+                {
+                    "id": "task-1",
+                    "description": "Fix a bug",
+                    "focus_files": ["src/main.py"],
+                    "strategy_hint": "Debug it",
+                },
+            ]
+        )
         subtasks = _parse_subtasks(content)
         assert subtasks[0].role == ""
 
     def test_parses_role_from_markdown_wrapped_json(self) -> None:
-        content = '```json\n' + json.dumps([
-            {
-                "id": "task-1",
-                "description": "Review methods",
-                "focus_files": [],
-                "strategy_hint": "Check methodology",
-                "role": "reviewer",
-            },
-        ]) + '\n```'
+        content = (
+            "```json\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "task-1",
+                        "description": "Review methods",
+                        "focus_files": [],
+                        "strategy_hint": "Check methodology",
+                        "role": "reviewer",
+                    },
+                ]
+            )
+            + "\n```"
+        )
         subtasks = _parse_subtasks(content)
         assert subtasks[0].role == "reviewer"
 
@@ -102,9 +112,7 @@ class TestDetectorResearchGoal:
         assert detect_research_goal("Research the effects of caffeine")
         assert detect_research_goal("Investigate cancer biomarkers")
         assert detect_research_goal("Run a statistical analysis on the data")
-        assert detect_research_goal(
-            "Search PubMed for COVID vaccine papers"
-        )
+        assert detect_research_goal("Search PubMed for COVID vaccine papers")
 
     def test_does_not_detect_non_research(self) -> None:
         from retrai.goals.detector import detect_research_goal

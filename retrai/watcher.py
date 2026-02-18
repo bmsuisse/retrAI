@@ -14,14 +14,33 @@ logger = logging.getLogger(__name__)
 
 # Directories and extensions to ignore
 IGNORE_DIRS = {
-    ".git", "node_modules", "__pycache__", ".venv", "venv",
-    ".tox", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-    "dist", "build", ".eggs", "target", ".retrai",
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".tox",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    "dist",
+    "build",
+    ".eggs",
+    "target",
+    ".retrai",
 }
 
 IGNORE_EXTENSIONS = {
-    ".pyc", ".pyo", ".so", ".o", ".a", ".dll",
-    ".exe", ".bin", ".whl", ".egg-info",
+    ".pyc",
+    ".pyo",
+    ".so",
+    ".o",
+    ".a",
+    ".dll",
+    ".exe",
+    ".bin",
+    ".whl",
+    ".egg-info",
 }
 
 
@@ -95,9 +114,7 @@ class FileWatcher:
             pass
         return snapshot
 
-    def _detect_changes(
-        self, old: dict[str, float], new: dict[str, float]
-    ) -> list[str]:
+    def _detect_changes(self, old: dict[str, float], new: dict[str, float]) -> list[str]:
         """Detect which files changed between two snapshots."""
         changed: list[str] = []
 
@@ -145,8 +162,7 @@ class FileWatcher:
             if (
                 pending_changes
                 and not self._agent_running
-                and (time.monotonic() - last_change_time)
-                >= self.debounce_seconds
+                and (time.monotonic() - last_change_time) >= self.debounce_seconds
             ):
                 await self._trigger_run(pending_changes)
                 pending_changes = []
@@ -178,6 +194,7 @@ class FileWatcher:
         """Auto-detect the best goal for this project."""
         try:
             from retrai.goals.detector import detect_goal
+
             return detect_goal(str(self.cwd))
         except Exception:
             return "pytest"  # Safe default

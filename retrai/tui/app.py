@@ -274,9 +274,7 @@ class RetrAITUI(App[None]):
                 self._status_panel.iteration = final_state.get("iteration", 0)
 
             if achieved:
-                self._write(
-                    "\n[bold #4ade80]✓ GOAL ACHIEVED[/bold #4ade80]"
-                )
+                self._write("\n[bold #4ade80]✓ GOAL ACHIEVED[/bold #4ade80]")
                 self.notify(
                     "Goal achieved! 🎉",
                     title="retrAI",
@@ -284,9 +282,7 @@ class RetrAITUI(App[None]):
                 )
                 self.bell()
             else:
-                self._write(
-                    "\n[bold #f87171]✗ GOAL NOT ACHIEVED[/bold #f87171]"
-                )
+                self._write("\n[bold #f87171]✗ GOAL NOT ACHIEVED[/bold #f87171]")
                 self.notify(
                     "Goal not achieved.",
                     title="retrAI",
@@ -319,9 +315,7 @@ class RetrAITUI(App[None]):
             tool = payload.get("tool", "?")
             args = payload.get("args", {})
             arg_str = self._format_tool_args(tool, args)
-            self._write(
-                f"  [#38bdf8]⟶ {tool}[/#38bdf8] [dim]{arg_str}[/dim]"
-            )
+            self._write(f"  [#38bdf8]⟶ {tool}[/#38bdf8] [dim]{arg_str}[/dim]")
             # Track file activity
             self._track_file(tool, args)
 
@@ -330,13 +324,9 @@ class RetrAITUI(App[None]):
             err = payload.get("error", False)
             content = str(payload.get("content", ""))[:150]
             if err:
-                self._write(
-                    f"  [#f87171]✗ {tool}[/#f87171] [dim]{content!r}[/dim]"
-                )
+                self._write(f"  [#f87171]✗ {tool}[/#f87171] [dim]{content!r}[/dim]")
             else:
-                self._write(
-                    f"  [#4ade80]✓ {tool}[/#4ade80] [dim]{content!r}[/dim]"
-                )
+                self._write(f"  [#4ade80]✓ {tool}[/#4ade80] [dim]{content!r}[/dim]")
             # Update tool stats
             if self._tool_stats:
                 self._tool_stats.record_call(tool, error=err)
@@ -349,8 +339,7 @@ class RetrAITUI(App[None]):
             completion = payload.get("completion_tokens", 0)
             self._iter_tokens += total
             self._write(
-                f"  [#a78bfa]◈ tokens:[/#a78bfa] "
-                f"[dim]{prompt}in + {completion}out = {total}[/dim]"
+                f"  [#a78bfa]◈ tokens:[/#a78bfa] [dim]{prompt}in + {completion}out = {total}[/dim]"
             )
             if self._status_panel:
                 self._status_panel.total_tokens += total
@@ -359,18 +348,14 @@ class RetrAITUI(App[None]):
             achieved = payload.get("achieved", False)
             reason = payload.get("reason", "")
             if achieved:
-                self._write(
-                    f"  [bold #4ade80]◉ GOAL: {reason}[/bold #4ade80]"
-                )
+                self._write(f"  [bold #4ade80]◉ GOAL: {reason}[/bold #4ade80]")
             else:
                 self._write(f"  [#fbbf24]◌ {reason}[/#fbbf24]")
             if self._timeline:
                 self._timeline.replace_last_marker(achieved)
 
         elif kind == "human_check_required":
-            self._write(
-                "[bold #fb923c]⏸  Human approval required[/bold #fb923c]"
-            )
+            self._write("[bold #fb923c]⏸  Human approval required[/bold #fb923c]")
             self.notify(
                 "Human approval required",
                 title="retrAI — HITL",
@@ -379,10 +364,7 @@ class RetrAITUI(App[None]):
 
         elif kind == "iteration_complete":
             n = payload.get("iteration", 0)
-            self._write(
-                f"[dim #2e1065]└───────────────────────"
-                f"──── iteration {n} ──[/dim #2e1065]"
-            )
+            self._write(f"[dim #2e1065]└─────────────────────────── iteration {n} ──[/dim #2e1065]")
             if self._status_panel:
                 self._status_panel.iteration = n
             # Feed sparklines with this iteration's token usage

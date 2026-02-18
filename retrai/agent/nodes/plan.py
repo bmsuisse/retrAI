@@ -22,7 +22,6 @@ _tool_registry = create_default_registry()
 TOOL_DEFINITIONS = _tool_registry.list_definitions()
 
 
-
 async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
     """Call the LLM to decide next actions."""
     cfg = config.get("configurable", {})
@@ -103,9 +102,7 @@ async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
                 payload={
                     "text": reasoning_text,
                     "model": state["model_name"],
-                    "has_tool_calls": bool(
-                        hasattr(response, "tool_calls") and response.tool_calls
-                    ),
+                    "has_tool_calls": bool(hasattr(response, "tool_calls") and response.tool_calls),
                 },
             )
         )
@@ -124,10 +121,7 @@ async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
 
     new_total = state.get("total_tokens", 0)
     if usage_meta:
-        new_total += (
-            usage_meta.get("input_tokens", 0)
-            + usage_meta.get("output_tokens", 0)
-        )
+        new_total += usage_meta.get("input_tokens", 0) + usage_meta.get("output_tokens", 0)
 
     # Estimate cost
     new_cost = state.get("estimated_cost_usd", 0.0)
@@ -261,9 +255,20 @@ def _auto_context(cwd: str) -> str:
 
     # 1. Compact directory tree (depth=2)
     skip_dirs = {
-        ".git", "node_modules", "__pycache__", ".venv", "venv",
-        ".tox", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-        "dist", "build", ".eggs", "target", "vendor",
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".tox",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "dist",
+        "build",
+        ".eggs",
+        "target",
+        "vendor",
     }
     tree_lines: list[str] = []
     try:
@@ -294,8 +299,12 @@ def _auto_context(cwd: str) -> str:
 
     # 2. Key config file snippets
     config_files = [
-        "pyproject.toml", "package.json", "Cargo.toml", "go.mod",
-        ".retrai.yml", "Makefile",
+        "pyproject.toml",
+        "package.json",
+        "Cargo.toml",
+        "go.mod",
+        ".retrai.yml",
+        "Makefile",
     ]
     for fname in config_files:
         fpath = root / fname
@@ -357,4 +366,3 @@ def _load_memories(cwd: str) -> str:
         return store.format_for_prompt(limit=10)
     except Exception:
         return ""
-

@@ -116,8 +116,7 @@ class _SqlAlchemyBackend:
         if dialect == "sqlite":
             _, rows = self.execute(f"PRAGMA table_info({table})")
             columns = [
-                {"name": str(r[1]), "type": str(r[2]), "nullable": str(r[3] == 0)}
-                for r in rows
+                {"name": str(r[1]), "type": str(r[2]), "nullable": str(r[3] == 0)} for r in rows
             ]
             return columns, {}
         else:
@@ -263,9 +262,7 @@ def _run_query_sync(
             result.elapsed_ms.append(round(elapsed, 2))
             result.columns = columns
             result.row_count = len(rows)
-            result.sample_rows = [
-                [str(c) for c in row] for row in rows[:sample_limit]
-            ]
+            result.sample_rows = [[str(c) for c in row] for row in rows[:sample_limit]]
         except Exception as e:
             result.error = f"Query execution failed: {e}"
             return result
@@ -364,12 +361,11 @@ async def sql_bench(
     try:
         backend = _create_backend(cfg)
     except ImportError as e:
-        return json.dumps({
-            "error": (
-                f"Missing dependency: {e}. "
-                "Install with: uv pip install 'retrai[sql]'"
-            ),
-        })
+        return json.dumps(
+            {
+                "error": (f"Missing dependency: {e}. Install with: uv pip install 'retrai[sql]'"),
+            }
+        )
     except Exception as e:
         return json.dumps({"error": f"Connection failed: {e}"})
 
@@ -380,7 +376,12 @@ async def sql_bench(
             if not query:
                 return json.dumps({"error": "No query provided for run_query"})
             result = await loop.run_in_executor(
-                None, _run_query_sync, backend, query, iterations, warmup,
+                None,
+                _run_query_sync,
+                backend,
+                query,
+                iterations,
+                warmup,
             )
             return json.dumps({"action": "run_query", **asdict(result)}, default=str)
 
@@ -388,7 +389,10 @@ async def sql_bench(
             if not query:
                 return json.dumps({"error": "No query provided for explain_query"})
             result = await loop.run_in_executor(
-                None, _explain_query_sync, backend, query,
+                None,
+                _explain_query_sync,
+                backend,
+                query,
             )
             return json.dumps({"action": "explain_query", **asdict(result)}, default=str)
 
@@ -396,14 +400,19 @@ async def sql_bench(
             if not table:
                 return json.dumps({"error": "No table name provided for profile_table"})
             result = await loop.run_in_executor(
-                None, _profile_table_sync, backend, table,
+                None,
+                _profile_table_sync,
+                backend,
+                table,
             )
             return json.dumps({"action": "profile_table", **asdict(result)}, default=str)
 
         else:
-            return json.dumps({
-                "error": f"Unknown action '{action}'. Use: run_query, explain_query, profile_table",
-            })
+            return json.dumps(
+                {
+                    "error": f"Unknown action '{action}'. Use: run_query, explain_query, profile_table",
+                }
+            )
     finally:
         try:
             backend.close()

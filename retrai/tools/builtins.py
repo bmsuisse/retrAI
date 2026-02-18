@@ -108,8 +108,7 @@ class FileListTool(BaseTool):
         return ToolSchema(
             name=self.name,
             description=(
-                "List files and directories at the given path, "
-                "relative to the project root."
+                "List files and directories at the given path, relative to the project root."
             ),
             parameters={
                 "type": "object",
@@ -414,9 +413,7 @@ class GitLogTool(BaseTool):
     def get_schema(self) -> ToolSchema:
         return ToolSchema(
             name=self.name,
-            description=(
-                "Show the recent git commit history (oneline format)."
-            ),
+            description=("Show the recent git commit history (oneline format)."),
             parameters={
                 "type": "object",
                 "properties": {
@@ -465,7 +462,9 @@ class RunPytestTool(BaseTool):
         from retrai.tools.pytest_runner import run_pytest
 
         result = await asyncio.get_event_loop().run_in_executor(
-            None, run_pytest, cwd,
+            None,
+            run_pytest,
+            cwd,
         )
         if result.timed_out:
             return "pytest timed out", True
@@ -876,8 +875,7 @@ class ExperimentLogTool(BaseTool):
                     "result": {
                         "type": "string",
                         "description": (
-                            "Outcome: 'confirmed', 'rejected', "
-                            "'inconclusive', or 'error'"
+                            "Outcome: 'confirmed', 'rejected', 'inconclusive', or 'error'"
                         ),
                     },
                     "notes": {"type": "string", "description": "Additional notes"},
@@ -1065,10 +1063,7 @@ class SqlBenchTool(BaseTool):
                 "properties": {
                     "action": {
                         "type": "string",
-                        "description": (
-                            "Action: 'run_query', 'explain_query', "
-                            "or 'profile_table'"
-                        ),
+                        "description": ("Action: 'run_query', 'explain_query', or 'profile_table'"),
                     },
                     "query": {
                         "type": "string",

@@ -65,9 +65,7 @@ class MemoryStore:
             return
         try:
             data = json.loads(self._path.read_text(encoding="utf-8"))
-            self._memories = [
-                Memory.from_dict(m) for m in data.get("memories", [])
-            ]
+            self._memories = [Memory.from_dict(m) for m in data.get("memories", [])]
         except (json.JSONDecodeError, OSError) as e:
             logger.warning("Failed to load memory store: %s", e)
             self._memories = []
@@ -104,9 +102,7 @@ class MemoryStore:
         now = time.time()
         scored = sorted(
             self._memories,
-            key=lambda m: m.relevance_score * (
-                1.0 / (1.0 + (now - m.timestamp) / 86400)
-            ),
+            key=lambda m: m.relevance_score * (1.0 / (1.0 + (now - m.timestamp) / 86400)),
             reverse=True,
         )
         self._memories = scored[:MAX_MEMORIES]
@@ -123,9 +119,7 @@ class MemoryStore:
             insight_words = set(insight_lower.split())
             overlap = len(query_words & insight_words)
             if overlap > 0 or query_lower in insight_lower:
-                score = overlap + (
-                    1.0 if query_lower in insight_lower else 0.0
-                )
+                score = overlap + (1.0 if query_lower in insight_lower else 0.0)
                 scored.append((score, m))
 
         scored.sort(key=lambda x: x[0], reverse=True)
@@ -163,8 +157,7 @@ class MemoryStore:
             lines.append(f"- {icon} {m.insight}")
 
         lines.append(
-            "\nUse these learnings to avoid repeating mistakes "
-            "and to apply successful strategies."
+            "\nUse these learnings to avoid repeating mistakes and to apply successful strategies."
         )
         return "\n".join(lines)
 

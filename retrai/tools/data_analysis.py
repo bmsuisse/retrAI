@@ -37,10 +37,12 @@ async def data_analysis(
     elif analysis_type == "distribution":
         code = _build_distribution_code(file_path)
     else:
-        return json.dumps({
-            "error": f"Unknown analysis_type '{analysis_type}'. "
-                     "Use: summary, correlations, quality, distribution",
-        })
+        return json.dumps(
+            {
+                "error": f"Unknown analysis_type '{analysis_type}'. "
+                "Use: summary, correlations, quality, distribution",
+            }
+        )
 
     result = await python_exec(
         code=code,
@@ -53,10 +55,12 @@ async def data_analysis(
         return json.dumps({"error": "Analysis timed out (60s limit)"})
 
     if result.returncode != 0:
-        return json.dumps({
-            "error": f"Analysis failed (exit {result.returncode})",
-            "stderr": result.stderr[:2000],
-        })
+        return json.dumps(
+            {
+                "error": f"Analysis failed (exit {result.returncode})",
+                "stderr": result.stderr[:2000],
+            }
+        )
 
     # Parse the JSON output from the sandbox
     stdout = result.stdout.strip()
@@ -65,10 +69,12 @@ async def data_analysis(
         parsed = json.loads(stdout)
         return json.dumps(parsed, indent=2, default=str)
     except json.JSONDecodeError:
-        return json.dumps({
-            "analysis_type": analysis_type,
-            "raw_output": stdout[:4000],
-        })
+        return json.dumps(
+            {
+                "analysis_type": analysis_type,
+                "raw_output": stdout[:4000],
+            }
+        )
 
 
 def _build_summary_code(file_path: str) -> str:

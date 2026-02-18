@@ -120,7 +120,12 @@ class SqlBenchmarkGoal(GoalBase):
 
             # Run the query benchmark
             qresult: QueryResult = await loop.run_in_executor(
-                None, _run_query_sync, backend, query, iterations, warmup,
+                None,
+                _run_query_sync,
+                backend,
+                query,
+                iterations,
+                warmup,
             )
         except Exception as e:
             return GoalResult(
@@ -153,7 +158,10 @@ class SqlBenchmarkGoal(GoalBase):
         if do_explain:
             try:
                 explain: ExplainResult = await loop.run_in_executor(
-                    None, _explain_query_sync, backend, query,
+                    None,
+                    _explain_query_sync,
+                    backend,
+                    query,
                 )
                 details["explain"] = {
                     "plan_type": explain.plan_type,
@@ -170,17 +178,22 @@ class SqlBenchmarkGoal(GoalBase):
             for tbl in profile_tables:
                 try:
                     prof: TableProfile = await loop.run_in_executor(
-                        None, _profile_table_sync, backend, tbl,
+                        None,
+                        _profile_table_sync,
+                        backend,
+                        tbl,
                     )
-                    profiles.append({
-                        "table": prof.table_name,
-                        "row_count": prof.row_count,
-                        "columns": prof.columns,
-                        "properties": prof.properties,
-                        "size_bytes": prof.size_bytes,
-                        "partitions": prof.partitions,
-                        "error": prof.error,
-                    })
+                    profiles.append(
+                        {
+                            "table": prof.table_name,
+                            "row_count": prof.row_count,
+                            "columns": prof.columns,
+                            "properties": prof.properties,
+                            "size_bytes": prof.size_bytes,
+                            "partitions": prof.partitions,
+                            "error": prof.error,
+                        }
+                    )
                 except Exception as e:
                     profiles.append({"table": tbl, "error": str(e)})
             details["table_profiles"] = profiles
@@ -194,13 +207,9 @@ class SqlBenchmarkGoal(GoalBase):
         # Evaluate pass/fail
         failures: list[str] = []
         if qresult.avg_ms > max_ms:
-            failures.append(
-                f"avg query time {qresult.avg_ms:.1f}ms exceeds limit {max_ms}ms"
-            )
+            failures.append(f"avg query time {qresult.avg_ms:.1f}ms exceeds limit {max_ms}ms")
         if expected_rows is not None and qresult.row_count != expected_rows:
-            failures.append(
-                f"returned {qresult.row_count} rows (expected {expected_rows})"
-            )
+            failures.append(f"returned {qresult.row_count} rows (expected {expected_rows})")
 
         if failures:
             return GoalResult(

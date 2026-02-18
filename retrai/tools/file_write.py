@@ -11,9 +11,7 @@ def _safe_resolve(path: str, cwd: str) -> Path:
     root = Path(cwd).resolve()
     full = (root / path).resolve()
     if not (full == root or str(full).startswith(str(root) + "/")):
-        raise PermissionError(
-            f"Path traversal blocked: '{path}' resolves outside project root"
-        )
+        raise PermissionError(f"Path traversal blocked: '{path}' resolves outside project root")
     return full
 
 

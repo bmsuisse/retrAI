@@ -122,11 +122,7 @@ async def test_python_exec_no_host_env_vars(tmp_path: Path) -> None:
     """Verify that host env vars like API keys are NOT visible in sandbox."""
     os.environ["_RETRAI_TEST_SECRET"] = "should_not_leak"
     try:
-        code = (
-            "import os\n"
-            "val = os.environ.get('_RETRAI_TEST_SECRET', 'MISSING')\n"
-            "print(val)\n"
-        )
+        code = "import os\nval = os.environ.get('_RETRAI_TEST_SECRET', 'MISSING')\nprint(val)\n"
         result = await python_exec(code, cwd=str(tmp_path))
         assert result.returncode == 0
         assert "MISSING" in result.stdout

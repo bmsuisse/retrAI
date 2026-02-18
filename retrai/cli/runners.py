@@ -73,8 +73,13 @@ def _render_event(event: AgentEvent) -> None:
 
 
 def _save_history(
-    cfg: RunConfig, achieved: bool, iters: int, tokens: int,
-    cost: float, started_at: float, reason: str,
+    cfg: RunConfig,
+    achieved: bool,
+    iters: int,
+    tokens: int,
+    cost: float,
+    started_at: float,
+    reason: str,
 ) -> None:
     """Persist run history. Silently ignores IO errors."""
     try:
@@ -182,24 +187,32 @@ async def run_cli(cfg: RunConfig) -> int:
         achieved, reason, info_line = _format_run_summary(final_state, elapsed)
 
         if achieved:
-            console.print(Panel(
-                f"[bold green]✅ GOAL ACHIEVED[/bold green]\n{reason}\n\n{info_line}",
-                border_style="green", title="[bold]Run Complete[/bold]",
-            ))
+            console.print(
+                Panel(
+                    f"[bold green]✅ GOAL ACHIEVED[/bold green]\n{reason}\n\n{info_line}",
+                    border_style="green",
+                    title="[bold]Run Complete[/bold]",
+                )
+            )
             exit_code = 0
         else:
-            console.print(Panel(
-                f"[bold red]❌ GOAL NOT ACHIEVED[/bold red]\n{reason}\n\n{info_line}",
-                border_style="red", title="[bold]Run Complete[/bold]",
-            ))
+            console.print(
+                Panel(
+                    f"[bold red]❌ GOAL NOT ACHIEVED[/bold red]\n{reason}\n\n{info_line}",
+                    border_style="red",
+                    title="[bold]Run Complete[/bold]",
+                )
+            )
             exit_code = 1
 
         _save_history(
-            cfg, achieved,
+            cfg,
+            achieved,
             final_state.get("iteration", 0),
             final_state.get("total_tokens", 0),
             final_state.get("estimated_cost_usd", 0.0),
-            started_at, reason,
+            started_at,
+            reason,
         )
 
     return exit_code
@@ -251,23 +264,31 @@ async def run_solve(cfg: RunConfig, description: str) -> int:
         achieved, reason, info_line = _format_run_summary(final_state, elapsed)
 
         if achieved:
-            console.print(Panel(
-                f"[bold green]✅ SOLVED[/bold green]\n{reason}\n\n{info_line}",
-                border_style="green", title="[bold]Problem Solved[/bold]",
-            ))
+            console.print(
+                Panel(
+                    f"[bold green]✅ SOLVED[/bold green]\n{reason}\n\n{info_line}",
+                    border_style="green",
+                    title="[bold]Problem Solved[/bold]",
+                )
+            )
             exit_code = 0
         else:
-            console.print(Panel(
-                f"[bold red]❌ NOT SOLVED[/bold red]\n{reason}\n\n{info_line}",
-                border_style="red", title="[bold]Solve Incomplete[/bold]",
-            ))
+            console.print(
+                Panel(
+                    f"[bold red]❌ NOT SOLVED[/bold red]\n{reason}\n\n{info_line}",
+                    border_style="red",
+                    title="[bold]Solve Incomplete[/bold]",
+                )
+            )
 
         _save_history(
-            cfg, achieved,
+            cfg,
+            achieved,
             final_state.get("iteration", 0),
             final_state.get("total_tokens", 0),
             final_state.get("estimated_cost_usd", 0.0),
-            started_at, reason,
+            started_at,
+            reason,
         )
 
     return exit_code
@@ -305,9 +326,7 @@ async def run_swarm(
     console.print("\n[bold blue]Worker Results:[/bold blue]")
     for wr in result.worker_results:
         status_icon = "✅" if wr.status == "achieved" else "❌"
-        console.print(
-            f"  {status_icon} [bold]{wr.task_id}[/bold]: {wr.description[:60]}"
-        )
+        console.print(f"  {status_icon} [bold]{wr.task_id}[/bold]: {wr.description[:60]}")
         if wr.findings:
             console.print(f"     [dim]{wr.findings[:120]}[/dim]")
         console.print(
@@ -331,11 +350,13 @@ async def run_swarm(
     ]
     info_line = "  ·  ".join(info_parts)
 
-    console.print(Panel(
-        f"[bold {status_color}]{result.status.upper()}[/bold {status_color}]\n\n"
-        f"{result.synthesis}\n\n{info_line}",
-        border_style=status_color,
-        title="[bold]Swarm Complete[/bold]",
-    ))
+    console.print(
+        Panel(
+            f"[bold {status_color}]{result.status.upper()}[/bold {status_color}]\n\n"
+            f"{result.synthesis}\n\n{info_line}",
+            border_style=status_color,
+            title="[bold]Swarm Complete[/bold]",
+        )
+    )
 
     return 0 if result.status == "achieved" else 1

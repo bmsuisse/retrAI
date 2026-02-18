@@ -77,9 +77,7 @@ def _interactive_setup(cwd: str) -> dict[str, str]:
     # 3. API key
     env_var = provider.get("env_var")
     if env_var and not os.environ.get(env_var):
-        console.print(
-            f"\n[yellow]No {env_var} found in environment.[/yellow]"
-        )
+        console.print(f"\n[yellow]No {env_var} found in environment.[/yellow]")
         api_key = typer.prompt(
             f"Enter your API key (or leave blank to set {env_var} later)",
             default="",
@@ -108,12 +106,8 @@ def _interactive_setup(cwd: str) -> dict[str, str]:
         "model": model,
     }
     config_path = Path(cwd) / ".retrai.yml"
-    config_path.write_text(
-        yaml.dump(dict(config), default_flow_style=False, sort_keys=False)
-    )
-    console.print(
-        f"\n[bold green]✓ Saved to {config_path.name}[/bold green]\n"
-    )
+    config_path.write_text(yaml.dump(dict(config), default_flow_style=False, sort_keys=False))
+    console.print(f"\n[bold green]✓ Saved to {config_path.name}[/bold green]\n")
     return {"model": model}
 
 
@@ -179,12 +173,8 @@ def _copilot_setup(cwd: str, yaml: Any) -> dict[str, str]:
         "model": model,
     }
     config_path = Path(cwd) / ".retrai.yml"
-    config_path.write_text(
-        yaml.dump(dict(config), default_flow_style=False, sort_keys=False)
-    )
-    console.print(
-        f"\n[bold green]✓ Saved to {config_path.name}[/bold green]\n"
-    )
+    config_path.write_text(yaml.dump(dict(config), default_flow_style=False, sort_keys=False))
+    console.print(f"\n[bold green]✓ Saved to {config_path.name}[/bold green]\n")
     return {"provider": "copilot", "model": model}
 
 
@@ -223,8 +213,7 @@ def _resolve_config(
     # Merge: CLI args > config file > defaults
     resolved_model = model if model != "claude-sonnet-4-6" else file_cfg.get("model", model)
     resolved_max_iter = (
-        max_iter if max_iter != 50
-        else int(file_cfg.get("max_iterations", max_iter))
+        max_iter if max_iter != 50 else int(file_cfg.get("max_iterations", max_iter))
     )
     resolved_hitl = hitl or bool(file_cfg.get("hitl_enabled", False))
 
@@ -243,9 +232,7 @@ def _resolve_config(
             model_name = str(resolved_model)
             if not model_name.startswith(("openai/", "copilot/")):
                 resolved_model = f"openai/{model_name}"
-            console.print(
-                "[dim]Using GitHub Copilot subscription[/dim]"
-            )
+            console.print("[dim]Using GitHub Copilot subscription[/dim]")
         except ValueError as e:
             console.print(f"[red]{e}[/red]")
             console.print(
@@ -355,7 +342,6 @@ def run(
 
     exit_code = asyncio.run(_run_cli(cfg))
     raise typer.Exit(code=exit_code)
-
 
 
 @app.command()
@@ -575,8 +561,7 @@ def history(
 
     if not records:
         console.print(
-            "[dim]No run history found.[/dim] "
-            "Run [bold cyan]retrai run[/bold cyan] first."
+            "[dim]No run history found.[/dim] Run [bold cyan]retrai run[/bold cyan] first."
         )
         return
 
@@ -597,16 +582,12 @@ def history(
 
     for r in records:
         status_str = (
-            "[green]✅ achieved[/green]"
-            if r.status == "achieved"
-            else "[red]❌ failed[/red]"
+            "[green]✅ achieved[/green]" if r.status == "achieved" else "[red]❌ failed[/red]"
         )
         cost_str = f"${r.estimated_cost_usd:.4f}" if r.estimated_cost_usd else "-"
         token_str = f"{r.total_tokens:,}" if r.total_tokens else "-"
         dur_str = f"{r.duration_seconds:.1f}s"
-        when = datetime.fromtimestamp(r.started_at, tz=UTC).strftime(
-            "%Y-%m-%d %H:%M"
-        )
+        when = datetime.fromtimestamp(r.started_at, tz=UTC).strftime("%Y-%m-%d %H:%M")
         table.add_row(
             r.run_id[:12],
             r.goal,
@@ -701,9 +682,7 @@ def solve(
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key", envvar="LLM_API_KEY"
     ),
-    api_base: str | None = typer.Option(
-        None, "--api-base", help="Custom API base URL"
-    ),
+    api_base: str | None = typer.Option(None, "--api-base", help="Custom API base URL"),
 ) -> None:
     """Solve a problem described in natural language.
 
@@ -755,9 +734,6 @@ def solve(
     raise typer.Exit(code=exit_code)
 
 
-
-
-
 @app.command()
 def swarm(
     description: str = typer.Argument(
@@ -766,15 +742,11 @@ def swarm(
     cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
     model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model"),
     workers: int = typer.Option(3, "--workers", "-w", help="Number of parallel worker agents"),
-    max_iter: int = typer.Option(
-        30, "--max-iter", "-n", help="Max iterations PER WORKER"
-    ),
+    max_iter: int = typer.Option(30, "--max-iter", "-n", help="Max iterations PER WORKER"),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key", envvar="LLM_API_KEY"
     ),
-    api_base: str | None = typer.Option(
-        None, "--api-base", help="Custom API base URL"
-    ),
+    api_base: str | None = typer.Option(None, "--api-base", help="Custom API base URL"),
 ) -> None:
     """Run a multi-agent swarm to solve a complex goal.
 
@@ -814,17 +786,16 @@ def swarm(
 
     from retrai.cli.runners import run_swarm as _run_swarm
 
-    exit_code = asyncio.run(_run_swarm(
-        description=description,
-        cwd=resolved_cwd,
-        model_name=model,
-        max_workers=workers,
-        max_iter=max_iter,
-    ))
+    exit_code = asyncio.run(
+        _run_swarm(
+            description=description,
+            cwd=resolved_cwd,
+            model_name=model,
+            max_workers=workers,
+            max_iter=max_iter,
+        )
+    )
     raise typer.Exit(code=exit_code)
-
-
-
 
 
 # Register extra commands (pipeline, review, watch, bench)

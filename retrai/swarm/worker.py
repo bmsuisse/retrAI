@@ -43,7 +43,8 @@ async def run_worker(
             )
             logger.info(
                 "Worker %s using role '%s'",
-                subtask.id, role.name,
+                subtask.id,
+                role.name,
             )
 
     initial_state = {
@@ -91,9 +92,7 @@ async def run_worker(
     except Exception as e:
         await bus.close()
         elapsed = time.time() - started
-        logger.error(
-            "Worker %s failed after %.1fs: %s", subtask.id, elapsed, e
-        )
+        logger.error("Worker %s failed after %.1fs: %s", subtask.id, elapsed, e)
         return WorkerResult(
             task_id=subtask.id,
             description=subtask.description,

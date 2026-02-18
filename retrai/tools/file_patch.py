@@ -11,9 +11,7 @@ def _safe_resolve(path: str, cwd: str) -> Path:
     root = Path(cwd).resolve()
     full = (root / path).resolve()
     if not (full == root or str(full).startswith(str(root) + "/")):
-        raise PermissionError(
-            f"Path traversal blocked: '{path}' resolves outside project root"
-        )
+        raise PermissionError(f"Path traversal blocked: '{path}' resolves outside project root")
     return full
 
 
@@ -37,10 +35,7 @@ async def file_patch(path: str, old: str, new: str, cwd: str) -> str:
         content = full_path.read_text(encoding="utf-8")
         count = content.count(old)
         if count == 0:
-            raise ValueError(
-                f"Target text not found in {path}. "
-                f"Searched for: {old[:200]!r}"
-            )
+            raise ValueError(f"Target text not found in {path}. Searched for: {old[:200]!r}")
         if count > 1:
             raise ValueError(
                 f"Target text found {count} times in {path} — must be unique. "

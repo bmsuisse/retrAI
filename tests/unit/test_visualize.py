@@ -13,6 +13,7 @@ from retrai.tools.visualize import VALID_CHART_TYPES, _build_chart_code, visuali
 # _build_chart_code tests
 # ---------------------------------------------------------------------------
 
+
 class TestBuildChartCode:
     """Test code generation for each chart type."""
 
@@ -100,6 +101,7 @@ class TestBuildChartCode:
 # visualize() async tests
 # ---------------------------------------------------------------------------
 
+
 class TestVisualize:
     """Test the async visualize() function."""
 
@@ -119,13 +121,15 @@ class TestVisualize:
         mock_result = MagicMock()
         mock_result.timed_out = False
         mock_result.returncode = 0
-        mock_result.stdout = json.dumps({
-            "chart_type": "scatter",
-            "output_path": "/out/chart.png",
-            "columns_used": ["x", "y"],
-            "rows": 100,
-            "title": "Test",
-        })
+        mock_result.stdout = json.dumps(
+            {
+                "chart_type": "scatter",
+                "output_path": "/out/chart.png",
+                "columns_used": ["x", "y"],
+                "rows": 100,
+                "title": "Test",
+            }
+        )
 
         with patch(
             "retrai.tools.visualize.python_exec",

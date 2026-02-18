@@ -51,13 +51,12 @@ class SolverGoal(GoalBase):
         """Get the current git diff."""
         try:
             from retrai.tools.git_diff import git_diff
+
             return await git_diff(cwd=cwd, staged=False)
         except Exception:
             return ""
 
-    async def _llm_judge(
-        self, state: dict, cwd: str, diff_text: str
-    ) -> GoalResult:
+    async def _llm_judge(self, state: dict, cwd: str, diff_text: str) -> GoalResult:
         """Ask the LLM to judge whether the goal has been achieved."""
         from langchain_core.messages import HumanMessage
 

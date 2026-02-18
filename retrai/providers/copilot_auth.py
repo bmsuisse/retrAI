@@ -205,10 +205,7 @@ def list_copilot_models(github_token: str) -> list[str]:
         )
         resp.raise_for_status()
         data = resp.json()
-        return [
-            m["id"] for m in data.get("data", [])
-            if m.get("id")
-        ]
+        return [m["id"] for m in data.get("data", []) if m.get("id")]
     except Exception:
         # Fallback to known models if API call fails
         return [

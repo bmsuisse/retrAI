@@ -8,23 +8,76 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # Directories and extensions to always skip
-_SKIP_DIRS = frozenset({
-    ".git", "node_modules", "__pycache__", ".venv", "venv",
-    ".tox", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-    "dist", "build", ".eggs", "target", "vendor",
-})
+_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".tox",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "dist",
+        "build",
+        ".eggs",
+        "target",
+        "vendor",
+    }
+)
 
-_BINARY_EXTENSIONS = frozenset({
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp",
-    ".svg", ".woff", ".woff2", ".ttf", ".eot", ".otf",
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar",
-    ".pdf", ".doc", ".docx", ".xls", ".xlsx",
-    ".exe", ".dll", ".so", ".dylib", ".o", ".a",
-    ".pyc", ".pyo", ".class", ".jar", ".war",
-    ".mp3", ".mp4", ".avi", ".mov", ".wmv", ".flv",
-    ".db", ".sqlite", ".sqlite3",
-    ".wasm", ".lock",
-})
+_BINARY_EXTENSIONS = frozenset(
+    {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".ico",
+        ".webp",
+        ".svg",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".otf",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".xz",
+        ".7z",
+        ".rar",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".exe",
+        ".dll",
+        ".so",
+        ".dylib",
+        ".o",
+        ".a",
+        ".pyc",
+        ".pyo",
+        ".class",
+        ".jar",
+        ".war",
+        ".mp3",
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".wmv",
+        ".flv",
+        ".db",
+        ".sqlite",
+        ".sqlite3",
+        ".wasm",
+        ".lock",
+    }
+)
 
 
 @dataclass

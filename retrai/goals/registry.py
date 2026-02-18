@@ -45,6 +45,7 @@ def get_goal(name: str) -> GoalBase:
 def get_solver_goal(description: str) -> GoalBase:
     """Create a SolverGoal for natural language problem solving."""
     from retrai.goals.solver import SolverGoal
+
     return SolverGoal(description=description)
 
 
@@ -55,4 +56,3 @@ def list_goals() -> list[str]:
 def get_research_goal(topic: str) -> ResearchGoal:
     """Create a ResearchGoal for a specific topic."""
     return ResearchGoal(topic=topic)
-

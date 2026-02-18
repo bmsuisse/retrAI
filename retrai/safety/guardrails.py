@@ -33,38 +33,42 @@ class SafetyConfig:
     max_execution_time_seconds: int = 300
     allow_network_access: bool = True
     require_approval_above: RiskLevel = RiskLevel.HIGH
-    blocked_commands: list[str] = field(default_factory=lambda: [
-        "rm -rf /",
-        "rm -rf ~",
-        "rm -rf /*",
-        "mkfs",
-        "dd if=",
-        ":(){:|:&};:",
-        "chmod -R 777 /",
-        "curl | sh",
-        "wget | sh",
-        "curl | bash",
-        "wget | bash",
-    ])
-    allowed_domains: list[str] = field(default_factory=lambda: [
-        "ncbi.nlm.nih.gov",
-        "eutils.ncbi.nlm.nih.gov",
-        "arxiv.org",
-        "export.arxiv.org",
-        "huggingface.co",
-        "raw.githubusercontent.com",
-        "data.gov",
-        "zenodo.org",
-        "figshare.com",
-        "kaggle.com",
-        "openalex.org",
-        "api.openalex.org",
-        "api.semanticscholar.org",
-        "api.crossref.org",
-        "pypi.org",
-        "npmjs.com",
-        "registry.npmjs.org",
-    ])
+    blocked_commands: list[str] = field(
+        default_factory=lambda: [
+            "rm -rf /",
+            "rm -rf ~",
+            "rm -rf /*",
+            "mkfs",
+            "dd if=",
+            ":(){:|:&};:",
+            "chmod -R 777 /",
+            "curl | sh",
+            "wget | sh",
+            "curl | bash",
+            "wget | bash",
+        ]
+    )
+    allowed_domains: list[str] = field(
+        default_factory=lambda: [
+            "ncbi.nlm.nih.gov",
+            "eutils.ncbi.nlm.nih.gov",
+            "arxiv.org",
+            "export.arxiv.org",
+            "huggingface.co",
+            "raw.githubusercontent.com",
+            "data.gov",
+            "zenodo.org",
+            "figshare.com",
+            "kaggle.com",
+            "openalex.org",
+            "api.openalex.org",
+            "api.semanticscholar.org",
+            "api.crossref.org",
+            "pypi.org",
+            "npmjs.com",
+            "registry.npmjs.org",
+        ]
+    )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SafetyConfig:
@@ -108,10 +112,12 @@ class SafetyViolation:
 # Dangerous patterns in shell commands
 _DANGEROUS_PATTERNS: list[tuple[str, str, RiskLevel]] = [
     # (regex_pattern, description, risk_level)
-    (r"\brm\s+(-[rf]+\s+)*(/|~/|\$HOME)",
-     "Recursive deletion of system/home directory", RiskLevel.CRITICAL),
-    (r"\bmkfs\b",
-     "Filesystem format command", RiskLevel.CRITICAL),
+    (
+        r"\brm\s+(-[rf]+\s+)*(/|~/|\$HOME)",
+        "Recursive deletion of system/home directory",
+        RiskLevel.CRITICAL,
+    ),
+    (r"\bmkfs\b", "Filesystem format command", RiskLevel.CRITICAL),
     (r"\bdd\s+if=", "Raw disk write", RiskLevel.CRITICAL),
     (r":\(\)\{.*\}", "Fork bomb", RiskLevel.CRITICAL),
     (r"\bchmod\s+-R\s+777\s+/", "Recursive permission change on root", RiskLevel.CRITICAL),
@@ -156,20 +162,24 @@ class SafetyGuard:
         # Check against blocked commands (substring match)
         for blocked in self.config.blocked_commands:
             if blocked.lower() in command.lower():
-                violations.append(SafetyViolation(
-                    rule="blocked_command",
-                    description=f"Blocked command pattern detected: '{blocked}'",
-                    risk_level=RiskLevel.CRITICAL,
-                ))
+                violations.append(
+                    SafetyViolation(
+                        rule="blocked_command",
+                        description=f"Blocked command pattern detected: '{blocked}'",
+                        risk_level=RiskLevel.CRITICAL,
+                    )
+                )
 
         # Check against regex patterns
         for pattern, desc, risk in _DANGEROUS_PATTERNS:
             if re.search(pattern, command, re.IGNORECASE):
-                violations.append(SafetyViolation(
-                    rule="dangerous_pattern",
-                    description=desc,
-                    risk_level=risk,
-                ))
+                violations.append(
+                    SafetyViolation(
+                        rule="dangerous_pattern",
+                        description=desc,
+                        risk_level=risk,
+                    )
+                )
 
         return violations
 
@@ -179,11 +189,13 @@ class SafetyGuard:
 
         for pattern, desc, risk in _DANGEROUS_PYTHON_PATTERNS:
             if re.search(pattern, code, re.IGNORECASE):
-                violations.append(SafetyViolation(
-                    rule="dangerous_python",
-                    description=desc,
-                    risk_level=risk,
-                ))
+                violations.append(
+                    SafetyViolation(
+                        rule="dangerous_python",
+                        description=desc,
+                        risk_level=risk,
+                    )
+                )
 
         return violations
 
@@ -195,17 +207,18 @@ class SafetyGuard:
         domain = parsed.hostname or ""
 
         is_allowed = any(
-            domain == d or domain.endswith(f".{d}")
-            for d in self.config.allowed_domains
+            domain == d or domain.endswith(f".{d}") for d in self.config.allowed_domains
         )
 
         if not is_allowed:
-            return [SafetyViolation(
-                rule="untrusted_domain",
-                description=f"Domain '{domain}' is not in the allowed domains list",
-                risk_level=RiskLevel.MEDIUM,
-                blocked=True,
-            )]
+            return [
+                SafetyViolation(
+                    rule="untrusted_domain",
+                    description=f"Domain '{domain}' is not in the allowed domains list",
+                    risk_level=RiskLevel.MEDIUM,
+                    blocked=True,
+                )
+            ]
 
         return []
 
@@ -213,14 +226,16 @@ class SafetyGuard:
         """Check if a file size exceeds limits."""
         max_bytes = int(self.config.max_file_size_mb * 1024 * 1024)
         if size_bytes > max_bytes:
-            return [SafetyViolation(
-                rule="file_too_large",
-                description=(
-                    f"File size ({size_bytes / 1024 / 1024:.1f} MB) exceeds "
-                    f"limit ({self.config.max_file_size_mb} MB)"
-                ),
-                risk_level=RiskLevel.MEDIUM,
-            )]
+            return [
+                SafetyViolation(
+                    rule="file_too_large",
+                    description=(
+                        f"File size ({size_bytes / 1024 / 1024:.1f} MB) exceeds "
+                        f"limit ({self.config.max_file_size_mb} MB)"
+                    ),
+                    risk_level=RiskLevel.MEDIUM,
+                )
+            ]
         return []
 
     def check_tool_call(
@@ -247,11 +262,13 @@ class SafetyGuard:
             code = args.get("code", "")
             # JS can also execute shell commands
             if "child_process" in code or "execSync" in code:
-                violations.append(SafetyViolation(
-                    rule="js_shell_exec",
-                    description="JavaScript code attempts to execute shell commands",
-                    risk_level=RiskLevel.MEDIUM,
-                ))
+                violations.append(
+                    SafetyViolation(
+                        rule="js_shell_exec",
+                        description="JavaScript code attempts to execute shell commands",
+                        risk_level=RiskLevel.MEDIUM,
+                    )
+                )
 
         elif tool_name == "dataset_fetch":
             source = args.get("source", "")

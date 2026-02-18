@@ -31,14 +31,17 @@ def _seed_table(db_path: Path) -> None:
 
     engine = create_engine(f"sqlite:///{db_path}")
     with engine.begin() as conn:
-        conn.execute(text(
-            "CREATE TABLE IF NOT EXISTS metrics "
-            "(id INTEGER PRIMARY KEY, name TEXT, value REAL)"
-        ))
-        conn.execute(text(
-            "INSERT INTO metrics (name, value) VALUES "
-            "('latency', 42.5), ('throughput', 1000.0), ('errors', 0.1)"
-        ))
+        conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS metrics (id INTEGER PRIMARY KEY, name TEXT, value REAL)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO metrics (name, value) VALUES "
+                "('latency', 42.5), ('throughput', 1000.0), ('errors', 0.1)"
+            )
+        )
     engine.dispose()
 
 

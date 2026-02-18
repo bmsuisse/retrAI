@@ -62,9 +62,7 @@ async def reflect_node(state: AgentState, config: RunnableConfig) -> dict:
         }
 
     # Generate reflection message based on failure patterns
-    reflection = _build_reflection_message(
-        recent_failures, failed_strategies, consecutive_failures
-    )
+    reflection = _build_reflection_message(recent_failures, failed_strategies, consecutive_failures)
 
     # Track this as a failed strategy
     if recent_failures:
@@ -135,9 +133,8 @@ def _build_reflection_message(
     """Build a reflection message that forces the agent to shift strategy."""
     avoided = ""
     if failed_strategies:
-        avoided = (
-            "\n\n**Previously failed approaches (DO NOT repeat these):**\n"
-            + "\n".join(f"- {s[:150]}" for s in failed_strategies[-5:])
+        avoided = "\n\n**Previously failed approaches (DO NOT repeat these):**\n" + "\n".join(
+            f"- {s[:150]}" for s in failed_strategies[-5:]
         )
 
     escalation = ""

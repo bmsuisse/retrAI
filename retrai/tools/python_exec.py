@@ -21,14 +21,16 @@ class PythonResult:
 
 
 # Minimal allowlist of env vars passed to the sandbox process.
-_SAFE_ENV_KEYS: frozenset[str] = frozenset({
-    "HOME",
-    "USER",
-    "LANG",
-    "LC_ALL",
-    "TERM",
-    "TMPDIR",
-})
+_SAFE_ENV_KEYS: frozenset[str] = frozenset(
+    {
+        "HOME",
+        "USER",
+        "LANG",
+        "LC_ALL",
+        "TERM",
+        "TMPDIR",
+    }
+)
 
 
 def _sandbox_dir(cwd: str) -> Path:
@@ -137,9 +139,7 @@ async def _install_packages(
         cwd=cwd,
     )
     try:
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout
-        )
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
     except TimeoutError:
         proc.kill()
         await proc.communicate()
@@ -201,9 +201,7 @@ async def python_exec(
             return PythonResult(stdout="", stderr=pip_out, returncode=-1)
 
     # Write code to a temporary file inside the project dir
-    script_fd, script_path = tempfile.mkstemp(
-        suffix=".py", prefix="_retrai_exec_", dir=cwd
-    )
+    script_fd, script_path = tempfile.mkstemp(suffix=".py", prefix="_retrai_exec_", dir=cwd)
     try:
         with os.fdopen(script_fd, "w") as f:
             f.write(code)
@@ -220,15 +218,11 @@ async def python_exec(
         )
 
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except TimeoutError:
             proc.kill()
             await proc.communicate()
-            return PythonResult(
-                stdout="", stderr="", returncode=-1, timed_out=True
-            )
+            return PythonResult(stdout="", stderr="", returncode=-1, timed_out=True)
 
         return PythonResult(
             stdout=stdout_bytes.decode("utf-8", errors="replace"),

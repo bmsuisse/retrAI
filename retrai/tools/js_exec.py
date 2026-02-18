@@ -21,14 +21,16 @@ class JsResult:
 
 
 # Minimal allowlist of env vars passed to the sandbox process.
-_SAFE_ENV_KEYS: frozenset[str] = frozenset({
-    "HOME",
-    "USER",
-    "LANG",
-    "LC_ALL",
-    "TERM",
-    "TMPDIR",
-})
+_SAFE_ENV_KEYS: frozenset[str] = frozenset(
+    {
+        "HOME",
+        "USER",
+        "LANG",
+        "LC_ALL",
+        "TERM",
+        "TMPDIR",
+    }
+)
 
 
 def _js_sandbox_dir(cwd: str) -> Path:
@@ -117,15 +119,15 @@ async def _install_packages(
 ) -> tuple[str, bool]:
     """Install npm packages into the JS sandbox. Returns (output, had_error)."""
     proc = await asyncio.create_subprocess_exec(
-        str(bun), "add", *packages,
+        str(bun),
+        "add",
+        *packages,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         cwd=str(sandbox),
     )
     try:
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout
-        )
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
     except TimeoutError:
         proc.kill()
         await proc.communicate()
@@ -195,9 +197,7 @@ async def js_exec(
             return JsResult(stdout="", stderr=pkg_out, returncode=-1)
 
     # Write code to a temporary .ts file (Bun handles TS natively)
-    script_fd, script_path = tempfile.mkstemp(
-        suffix=".ts", prefix="_retrai_js_exec_", dir=cwd
-    )
+    script_fd, script_path = tempfile.mkstemp(suffix=".ts", prefix="_retrai_js_exec_", dir=cwd)
     try:
         with os.fdopen(script_fd, "w") as f:
             f.write(code)
@@ -205,7 +205,9 @@ async def js_exec(
         env = _build_sandbox_env(sandbox)
 
         proc = await asyncio.create_subprocess_exec(
-            str(bun), "run", script_path,
+            str(bun),
+            "run",
+            script_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             cwd=cwd,
@@ -213,15 +215,11 @@ async def js_exec(
         )
 
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except TimeoutError:
             proc.kill()
             await proc.communicate()
-            return JsResult(
-                stdout="", stderr="", returncode=-1, timed_out=True
-            )
+            return JsResult(stdout="", stderr="", returncode=-1, timed_out=True)
 
         return JsResult(
             stdout=stdout_bytes.decode("utf-8", errors="replace"),

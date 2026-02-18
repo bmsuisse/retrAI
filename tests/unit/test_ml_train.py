@@ -148,10 +148,16 @@ def test_build_training_code_feature_columns() -> None:
 
 def test_model_registry_has_key_models() -> None:
     expected = [
-        "logistic_regression", "random_forest",
-        "gradient_boosting", "svm", "knn",
-        "decision_tree", "xgboost", "lightgbm",
-        "ridge", "lasso",
+        "logistic_regression",
+        "random_forest",
+        "gradient_boosting",
+        "svm",
+        "knn",
+        "decision_tree",
+        "xgboost",
+        "lightgbm",
+        "ridge",
+        "lasso",
     ]
     for name in expected:
         assert name in MODEL_REGISTRY, f"Missing: {name}"
@@ -163,7 +169,8 @@ def test_all_models_have_required_keys() -> None:
         assert "class" in info, f"{name} missing 'class'"
         assert "task" in info, f"{name} missing 'task'"
         assert info["task"] in (
-            "classification", "regression",
+            "classification",
+            "regression",
         ), f"{name} has invalid task: {info['task']}"
 
 
@@ -217,7 +224,8 @@ class TestMlOptimizeGoal:
 
     @pytest.mark.asyncio
     async def test_metric_below_target(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         config_path = tmp_path / ".retrai.yml"
         config_path.write_text(
@@ -229,9 +237,11 @@ class TestMlOptimizeGoal:
         )
         tool_result = {
             "name": "ml_train",
-            "content": json.dumps({
-                "metrics": {"auc": 0.82, "f1": 0.75},
-            }),
+            "content": json.dumps(
+                {
+                    "metrics": {"auc": 0.82, "f1": 0.75},
+                }
+            ),
         }
         state: dict = {
             "messages": [],
@@ -246,7 +256,8 @@ class TestMlOptimizeGoal:
 
     @pytest.mark.asyncio
     async def test_metric_meets_target(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         config_path = tmp_path / ".retrai.yml"
         config_path.write_text(
@@ -258,9 +269,11 @@ class TestMlOptimizeGoal:
         )
         tool_result = {
             "name": "ml_train",
-            "content": json.dumps({
-                "metrics": {"auc": 0.92, "f1": 0.88},
-            }),
+            "content": json.dumps(
+                {
+                    "metrics": {"auc": 0.92, "f1": 0.88},
+                }
+            ),
         }
         state: dict = {
             "messages": [],
@@ -274,7 +287,8 @@ class TestMlOptimizeGoal:
 
     @pytest.mark.asyncio
     async def test_picks_best_score(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         config_path = tmp_path / ".retrai.yml"
         config_path.write_text(
@@ -285,15 +299,30 @@ class TestMlOptimizeGoal:
             "target_value: 0.90\n"
         )
         results = [
-            {"name": "ml_train", "content": json.dumps({
-                "metrics": {"auc": 0.70},
-            })},
-            {"name": "ml_train", "content": json.dumps({
-                "metrics": {"auc": 0.91},
-            })},
-            {"name": "ml_train", "content": json.dumps({
-                "metrics": {"auc": 0.85},
-            })},
+            {
+                "name": "ml_train",
+                "content": json.dumps(
+                    {
+                        "metrics": {"auc": 0.70},
+                    }
+                ),
+            },
+            {
+                "name": "ml_train",
+                "content": json.dumps(
+                    {
+                        "metrics": {"auc": 0.91},
+                    }
+                ),
+            },
+            {
+                "name": "ml_train",
+                "content": json.dumps(
+                    {
+                        "metrics": {"auc": 0.85},
+                    }
+                ),
+            },
         ]
         state: dict = {
             "messages": [],
@@ -306,7 +335,8 @@ class TestMlOptimizeGoal:
         assert result.details["best_score"] == pytest.approx(0.91)
 
     def test_system_prompt_contains_instructions(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         config_path = tmp_path / ".retrai.yml"
         config_path.write_text(
@@ -330,6 +360,7 @@ class TestMlOptimizeGoal:
 
 def test_ml_optimize_in_registry() -> None:
     from retrai.goals.registry import get_goal, list_goals
+
     assert "ml-optimize" in list_goals()
     goal = get_goal("ml-optimize")
     assert isinstance(goal, MlOptimizeGoal)

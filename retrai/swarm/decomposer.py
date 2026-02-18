@@ -43,9 +43,20 @@ def _build_context(cwd: str) -> str:
     parts: list[str] = []
 
     skip_dirs = {
-        ".git", "node_modules", "__pycache__", ".venv", "venv",
-        ".tox", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-        "dist", "build", ".eggs", "target", "vendor",
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".tox",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "dist",
+        "build",
+        ".eggs",
+        "target",
+        "vendor",
     }
 
     tree_lines: list[str] = []
@@ -76,8 +87,12 @@ def _build_context(cwd: str) -> str:
 
     # Read key config files
     config_files = [
-        "pyproject.toml", "package.json", "Cargo.toml", "go.mod",
-        ".retrai.yml", "Makefile",
+        "pyproject.toml",
+        "package.json",
+        "Cargo.toml",
+        "go.mod",
+        ".retrai.yml",
+        "Makefile",
     ]
     for fname in config_files:
         fpath = root / fname

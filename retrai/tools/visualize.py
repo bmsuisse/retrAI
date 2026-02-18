@@ -12,15 +12,17 @@ from retrai.tools.python_exec import python_exec
 
 logger = logging.getLogger(__name__)
 
-VALID_CHART_TYPES = frozenset({
-    "scatter",
-    "bar",
-    "histogram",
-    "heatmap",
-    "boxplot",
-    "line",
-    "correlation_matrix",
-})
+VALID_CHART_TYPES = frozenset(
+    {
+        "scatter",
+        "bar",
+        "histogram",
+        "heatmap",
+        "boxplot",
+        "line",
+        "correlation_matrix",
+    }
+)
 
 
 async def visualize(
@@ -52,12 +54,14 @@ async def visualize(
     chart_type = chart_type.lower().strip()
 
     if chart_type not in VALID_CHART_TYPES:
-        return json.dumps({
-            "error": (
-                f"Unknown chart type '{chart_type}'. "
-                f"Valid: {', '.join(sorted(VALID_CHART_TYPES))}"
-            ),
-        })
+        return json.dumps(
+            {
+                "error": (
+                    f"Unknown chart type '{chart_type}'. "
+                    f"Valid: {', '.join(sorted(VALID_CHART_TYPES))}"
+                ),
+            }
+        )
 
     # Build default output path
     if not output_path:
@@ -86,21 +90,25 @@ async def visualize(
         return json.dumps({"error": "Chart generation timed out (60s)"})
 
     if result.returncode != 0:
-        return json.dumps({
-            "error": f"Chart generation failed (exit {result.returncode})",
-            "stderr": result.stderr[:2000],
-        })
+        return json.dumps(
+            {
+                "error": f"Chart generation failed (exit {result.returncode})",
+                "stderr": result.stderr[:2000],
+            }
+        )
 
     stdout = result.stdout.strip()
     try:
         parsed = json.loads(stdout)
         return json.dumps(parsed, indent=2)
     except json.JSONDecodeError:
-        return json.dumps({
-            "chart_type": chart_type,
-            "output_path": output_path,
-            "raw_output": stdout[:2000],
-        })
+        return json.dumps(
+            {
+                "chart_type": chart_type,
+                "output_path": output_path,
+                "raw_output": stdout[:2000],
+            }
+        )
 
 
 def _build_chart_code(
@@ -236,9 +244,12 @@ def _build_chart_code(
         """),
     }
 
-    code = chart_code.get(chart_type, 'cols_used = []')
+    code = chart_code.get(chart_type, "cols_used = []")
 
-    return data_load + code + textwrap.dedent(f"""\
+    return (
+        data_load
+        + code
+        + textwrap.dedent(f"""\
 
         plt.tight_layout()
         fig.savefig(out_path, dpi=150, bbox_inches='tight')
@@ -253,3 +264,4 @@ def _build_chart_code(
         }}
         print(json.dumps(result))
     """)
+    )

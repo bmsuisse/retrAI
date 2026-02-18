@@ -162,17 +162,21 @@ async def ml_train(
 
     # Validate model type
     if model_type not in MODEL_REGISTRY:
-        return json.dumps({
-            "error": f"Unknown model_type '{model_type}'. "
-                     f"Available: {', '.join(sorted(MODEL_REGISTRY.keys()))}",
-        })
+        return json.dumps(
+            {
+                "error": f"Unknown model_type '{model_type}'. "
+                f"Available: {', '.join(sorted(MODEL_REGISTRY.keys()))}",
+            }
+        )
 
     # Validate scoring metric
     if scoring_metric not in VALID_METRICS:
-        return json.dumps({
-            "error": f"Unknown scoring_metric '{scoring_metric}'. "
-                     f"Available: {', '.join(sorted(VALID_METRICS))}",
-        })
+        return json.dumps(
+            {
+                "error": f"Unknown scoring_metric '{scoring_metric}'. "
+                f"Available: {', '.join(sorted(VALID_METRICS))}",
+            }
+        )
 
     model_info = MODEL_REGISTRY[model_type]
 
@@ -206,20 +210,24 @@ async def ml_train(
         return json.dumps({"error": "Training timed out (120s limit)"})
 
     if result.returncode != 0:
-        return json.dumps({
-            "error": f"Training failed (exit {result.returncode})",
-            "stderr": result.stderr[:3000],
-        })
+        return json.dumps(
+            {
+                "error": f"Training failed (exit {result.returncode})",
+                "stderr": result.stderr[:3000],
+            }
+        )
 
     stdout = result.stdout.strip()
     try:
         parsed = json.loads(stdout)
         return json.dumps(parsed, indent=2, default=str)
     except json.JSONDecodeError:
-        return json.dumps({
-            "model_type": model_type,
-            "raw_output": stdout[:5000],
-        })
+        return json.dumps(
+            {
+                "model_type": model_type,
+                "raw_output": stdout[:5000],
+            }
+        )
 
 
 def _build_training_code(

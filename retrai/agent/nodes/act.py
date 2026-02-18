@@ -75,8 +75,14 @@ async def act_node(state: AgentState, config: RunnableConfig) -> dict:
             # Single tool — execute normally
             tc = batch[0]
             await _execute_and_record(
-                tc, cwd, run_id, iteration, event_bus,
-                tool_results, tool_messages, safety_guard,
+                tc,
+                cwd,
+                run_id,
+                iteration,
+                event_bus,
+                tool_results,
+                tool_messages,
+                safety_guard,
             )
         else:
             # Multiple read-only tools — execute in parallel
@@ -106,9 +112,7 @@ async def act_node(state: AgentState, config: RunnableConfig) -> dict:
                     )
 
             # Execute all in parallel
-            tasks = [
-                _dispatch(tc["name"], tc["args"], cwd) for tc in batch
-            ]
+            tasks = [_dispatch(tc["name"], tc["args"], cwd) for tc in batch]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # Process results
@@ -174,9 +178,8 @@ async def _execute_and_record(
     if safety_guard:
         violations = safety_guard.check_tool_call(tool_name, args)
         if safety_guard.should_block(violations):
-            content = (
-                "⛔ Safety guard BLOCKED this operation:\n"
-                + safety_guard.format_violations(violations)
+            content = "⛔ Safety guard BLOCKED this operation:\n" + safety_guard.format_violations(
+                violations
             )
             tool_results.append(
                 ToolResult(
@@ -228,12 +231,9 @@ async def _execute_and_record(
         error=error,
     )
     tool_results.append(result)
-    tool_messages.append(
-        ToolMessage(content=content, tool_call_id=tool_call_id, name=tool_name)
-    )
+    tool_messages.append(ToolMessage(content=content, tool_call_id=tool_call_id, name=tool_name))
 
 
 async def _dispatch(tool_name: str, args: dict, cwd: str) -> tuple[str, bool]:
     """Dispatch a single tool call via the registry. Returns (content, is_error)."""
     return await _registry.dispatch(tool_name, args, cwd)
-

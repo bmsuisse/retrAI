@@ -41,16 +41,13 @@ class ResearchGoal(GoalBase):
 
         # Phase 1: Literature review
         lit_review = out / "literature_review.md"
-        phases["literature_review"] = (
-            lit_review.exists() and lit_review.stat().st_size > 100
-        )
+        phases["literature_review"] = lit_review.exists() and lit_review.stat().st_size > 100
 
         # Phase 2: Data collection
         data_dir = out / "data"
         phases["data_collection"] = (
-            data_dir.exists()
-            and any(data_dir.iterdir())
-        ) if data_dir.exists() else False
+            (data_dir.exists() and any(data_dir.iterdir())) if data_dir.exists() else False
+        )
 
         # Phase 3: Analysis (at least one experiment logged)
         tracker = ExperimentTracker(cwd)
@@ -59,9 +56,7 @@ class ResearchGoal(GoalBase):
 
         # Phase 4: Report
         report = out / "report.md"
-        phases["report"] = (
-            report.exists() and report.stat().st_size > 200
-        )
+        phases["report"] = report.exists() and report.stat().st_size > 200
 
         completed = sum(1 for v in phases.values() if v)
         total = len(phases)
@@ -69,18 +64,13 @@ class ResearchGoal(GoalBase):
 
         # Build status string
         icons = {True: "✅", False: "❌"}
-        status_parts = [
-            f"{name.replace('_', ' ')}: {icons[done]}"
-            for name, done in phases.items()
-        ]
+        status_parts = [f"{name.replace('_', ' ')}: {icons[done]}" for name, done in phases.items()]
         status_str = ", ".join(status_parts)
 
         if completed == total:
             return GoalResult(
                 achieved=True,
-                reason=(
-                    f"Research complete ({pct}%): {status_str}"
-                ),
+                reason=(f"Research complete ({pct}%): {status_str}"),
                 details={
                     "phases": phases,
                     "percentage": pct,
@@ -90,9 +80,7 @@ class ResearchGoal(GoalBase):
 
         return GoalResult(
             achieved=False,
-            reason=(
-                f"Research {pct}% complete: {status_str}"
-            ),
+            reason=(f"Research {pct}% complete: {status_str}"),
             details={
                 "phases": phases,
                 "percentage": pct,

@@ -164,13 +164,15 @@ class ExperimentTracker:
         }
 
         for exp in experiments:
-            comparison["experiments"].append({
-                "id": exp.id,
-                "name": exp.name,
-                "result": exp.result,
-                "metrics": exp.metrics,
-                "parameters": exp.parameters,
-            })
+            comparison["experiments"].append(
+                {
+                    "id": exp.id,
+                    "name": exp.name,
+                    "result": exp.result,
+                    "metrics": exp.metrics,
+                    "parameters": exp.parameters,
+                }
+            )
 
         # Find best/worst for each metric
         if len(experiments) > 1:
@@ -230,11 +232,15 @@ async def experiment_log(
         exp.completed_at = time.time()
 
     exp_id = tracker.log(exp)
-    return json.dumps({
-        "experiment_id": exp_id,
-        "status": exp.status,
-        "experiment": exp.to_dict(),
-    }, indent=2, default=str)
+    return json.dumps(
+        {
+            "experiment_id": exp_id,
+            "status": exp.status,
+            "experiment": exp.to_dict(),
+        },
+        indent=2,
+        default=str,
+    )
 
 
 async def experiment_list(
@@ -256,17 +262,23 @@ async def experiment_list(
     experiments = tracker.list_experiments(tag=tag, status=status)
     items = []
     for exp in experiments:
-        items.append({
-            "id": exp.id,
-            "name": exp.name,
-            "result": exp.result,
-            "status": exp.status,
-            "metrics": exp.metrics,
-            "tags": exp.tags,
-            "created_at": exp.created_at,
-        })
+        items.append(
+            {
+                "id": exp.id,
+                "name": exp.name,
+                "result": exp.result,
+                "status": exp.status,
+                "metrics": exp.metrics,
+                "tags": exp.tags,
+                "created_at": exp.created_at,
+            }
+        )
 
-    return json.dumps({
-        "total": len(items),
-        "experiments": items,
-    }, indent=2, default=str)
+    return json.dumps(
+        {
+            "total": len(items),
+            "experiments": items,
+        },
+        indent=2,
+        default=str,
+    )

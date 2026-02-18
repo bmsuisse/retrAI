@@ -455,11 +455,15 @@ def ml(
         help="Target column name to predict",
     ),
     cwd: str = typer.Option(
-        ".", "--cwd", "-C", help="Project directory",
+        ".",
+        "--cwd",
+        "-C",
+        help="Project directory",
     ),
     model: str = typer.Option(
         "claude-sonnet-4-6",
-        "--model", "-m",
+        "--model",
+        "-m",
         help="LLM model for the agent",
     ),
     metric: str = typer.Option(
@@ -469,7 +473,8 @@ def ml(
     ),
     target_value: float = typer.Option(
         0.85,
-        "--target-value", "-t",
+        "--target-value",
+        "-t",
         help="Target metric value to achieve",
     ),
     task_type: str | None = typer.Option(
@@ -478,16 +483,22 @@ def ml(
         help="classification or regression (auto-detected)",
     ),
     max_iter: int = typer.Option(
-        30, "--max-iter", "-n", help="Max iterations",
+        30,
+        "--max-iter",
+        "-n",
+        help="Max iterations",
     ),
     api_key: str | None = typer.Option(
         None,
-        "--api-key", "-k",
+        "--api-key",
+        "-k",
         help="API key",
         envvar="LLM_API_KEY",
     ),
     api_base: str | None = typer.Option(
-        None, "--api-base", help="Custom API base URL",
+        None,
+        "--api-base",
+        help="Custom API base URL",
     ),
 ) -> None:
     """Run iterative ML model optimization.
@@ -519,13 +530,15 @@ def ml(
         except Exception:
             config = {}
 
-    config.update({
-        "goal": "ml-optimize",
-        "data_file": data,
-        "target_column": target,
-        "target_metric": metric,
-        "target_value": target_value,
-    })
+    config.update(
+        {
+            "goal": "ml-optimize",
+            "data_file": data,
+            "target_column": target,
+            "target_metric": metric,
+            "target_value": target_value,
+        }
+    )
     if task_type:
         config["task_type"] = task_type
 
@@ -544,7 +557,10 @@ def ml(
 
     result = asyncio.run(
         _run_pipeline(
-            ["ml-optimize"], cwd, model, max_iter,
+            ["ml-optimize"],
+            cwd,
+            model,
+            max_iter,
             continue_on_error=False,
         )
     )
@@ -568,4 +584,3 @@ def ml(
             f"Cost: ${result.total_cost:.4f}"
         )
         raise typer.Exit(1)
-

@@ -81,14 +81,10 @@ class TestExperimentTracker:
         assert updated.status == "completed"
         assert updated.completed_at is not None
 
-    def test_update_nonexistent(
-        self, tracker: ExperimentTracker
-    ) -> None:
+    def test_update_nonexistent(self, tracker: ExperimentTracker) -> None:
         assert not tracker.update("nope", metrics={"x": 1.0})
 
-    def test_list_experiments(
-        self, tracker: ExperimentTracker
-    ) -> None:
+    def test_list_experiments(self, tracker: ExperimentTracker) -> None:
         tracker.log(Experiment(name="a", tags=["ml"]))
         tracker.log(Experiment(name="b", tags=["stats"]))
         tracker.log(Experiment(name="c", tags=["ml"]))
@@ -139,12 +135,8 @@ class TestExperimentTools:
 
     @pytest.mark.asyncio
     async def test_experiment_list(self, tmp_path: Path) -> None:
-        await experiment_log(
-            name="run1", cwd=str(tmp_path), result="confirmed"
-        )
-        await experiment_log(
-            name="run2", cwd=str(tmp_path), result="rejected"
-        )
+        await experiment_log(name="run1", cwd=str(tmp_path), result="confirmed")
+        await experiment_log(name="run2", cwd=str(tmp_path), result="rejected")
 
         result = await experiment_list(cwd=str(tmp_path))
         data = json.loads(result)
