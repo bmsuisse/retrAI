@@ -8,8 +8,11 @@ from retrai.goals.bun_goal import BunTestGoal
 from retrai.goals.cancer_research_goal import CancerResearchGoal
 from retrai.goals.cargo_goal import CargoTestGoal
 from retrai.goals.creative_goal import CreativeGoal
+from retrai.goals.docker_goal import DockerGoal
 from retrai.goals.go_goal import GoTestGoal
+from retrai.goals.lint_goal import LintGoal
 from retrai.goals.make_goal import MakeTestGoal
+from retrai.goals.migration_goal import MigrationGoal
 from retrai.goals.ml_goal import MlOptimizeGoal
 from retrai.goals.npm_goal import NpmTestGoal
 from retrai.goals.perf_goal import PerfCheckGoal
@@ -44,6 +47,10 @@ _REGISTRY: dict[str, GoalBase] = {
     "text-improve": TextImproveGoal(),
     "creative": CreativeGoal(),
     "score": ScoreGoal(),
+    # Infrastructure / tooling
+    "docker-build": DockerGoal(),
+    "lint": LintGoal(),
+    "db-migrate": MigrationGoal(),
 }
 
 

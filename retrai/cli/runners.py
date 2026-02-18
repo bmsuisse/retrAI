@@ -111,6 +111,7 @@ def _build_initial_state(cfg: RunConfig) -> dict[str, Any]:
         "goal_reason": "",
         "iteration": 0,
         "max_iterations": cfg.max_iterations,
+        "max_cost_usd": cfg.max_cost_usd,
         "stop_mode": cfg.stop_mode,
         "hitl_enabled": cfg.hitl_enabled,
         "model_name": cfg.model_name,
@@ -120,6 +121,7 @@ def _build_initial_state(cfg: RunConfig) -> dict[str, Any]:
         "estimated_cost_usd": 0.0,
         "failed_strategies": [],
         "consecutive_failures": 0,
+        "tool_cache": {},
     }
 
 

@@ -56,6 +56,18 @@ def detect_goal(cwd: str) -> str | None:
     if _has_make_test_target(root):
         return "make-test"
 
+    # 9. Docker project (Dockerfile or docker-compose)
+    if _has_docker(root):
+        return "docker-build"
+
+    # 10. Linter config present
+    if _has_linter_config(root):
+        return "lint"
+
+    # 11. DB migration config
+    if _has_migration_config(root):
+        return "db-migrate"
+
     return None
 
 
@@ -154,3 +166,47 @@ def _has_make_test_target(root: Path) -> bool:
         if stripped.startswith("test:") or stripped.startswith("test "):
             return True
     return False
+
+
+def _has_docker(root: Path) -> bool:
+    """Return True if the project has a Dockerfile or docker-compose file."""
+    for name in ("Dockerfile", "docker-compose.yml", "docker-compose.yaml",
+                 "compose.yml", "compose.yaml"):
+        if (root / name).exists():
+            return True
+    return False
+
+
+def _has_linter_config(root: Path) -> bool:
+    """Return True if the project has a linter config file."""
+    # ruff
+    if (root / ".ruff.toml").exists():
+        return True
+    pyproject = root / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            if "[tool.ruff]" in pyproject.read_text(errors="replace"):
+                return True
+        except OSError:
+            pass
+    # eslint
+    for name in (".eslintrc", ".eslintrc.js", ".eslintrc.json", ".eslintrc.yml",
+                 ".eslintrc.yaml", "eslint.config.js", "eslint.config.mjs"):
+        if (root / name).exists():
+            return True
+    # golangci-lint
+    if (root / ".golangci.yml").exists() or (root / ".golangci.yaml").exists():
+        return True
+    return False
+
+
+def _has_migration_config(root: Path) -> bool:
+    """Return True if the project has a DB migration config."""
+    if (root / "alembic.ini").exists():
+        return True
+    if (root / "prisma" / "schema.prisma").exists():
+        return True
+    if (root / "flyway.conf").exists() or (root / "flyway.toml").exists():
+        return True
+    return False
+

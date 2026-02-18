@@ -304,6 +304,9 @@ def run(
         help="Agent solving pattern: 'default' | 'mop' (Mixture-of-Personas) | 'swarm'",
     ),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
+    max_cost: float = typer.Option(
+        0.0, "--max-cost", help="Max spend in USD (0 = no limit). Stops the run if exceeded."
+    ),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
     ),
@@ -374,6 +377,7 @@ def run(
         hitl_enabled=bool(resolved["hitl_enabled"]),
         agent_pattern=validated_pattern,  # type: ignore[arg-type]
         mop_enabled=(validated_pattern == "mop"),
+        max_cost_usd=max_cost,
     )
 
     console.print(

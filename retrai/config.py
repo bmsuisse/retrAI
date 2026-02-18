@@ -154,6 +154,7 @@ class RunConfig:
     mop_k: int = 3
     sandbox_path: str = ".retrai/sandbox"
     run_id: str = ""
+    max_cost_usd: float = 0.0  # 0 = no limit
 
     def __post_init__(self) -> None:
         if not self.run_id:

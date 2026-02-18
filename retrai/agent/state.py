@@ -44,6 +44,7 @@ class AgentState(TypedDict):
     total_tokens: int
     # Cost tracking
     estimated_cost_usd: float
+    max_cost_usd: float  # 0 = no limit
     # Smart retry / reflection
     failed_strategies: list[str]
     consecutive_failures: int

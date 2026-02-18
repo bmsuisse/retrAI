@@ -1357,6 +1357,569 @@ class RustBenchTool(BaseTool):
 
 # Canonical list of all built-in tools, in the order they should
 # appear in the LLM definitions list.
+# ──────────────────────────────────────────────────────────────────
+# Optimization
+# ──────────────────────────────────────────────────────────────────
+
+
+class OptimizeTool(BaseTool):
+    """Solve combinatorial and continuous optimization problems."""
+
+    name = "optimize"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Solve optimization problems using OR-Tools and scipy. "
+                "Actions: 'linear_program' (minimize c·x with linear constraints), "
+                "'minimize' (nonlinear function minimization), "
+                "'tsp' (Travelling Salesman Problem on a distance matrix), "
+                "'knapsack' (0/1 knapsack — maximize value within weight limit), "
+                "'assignment' (optimal worker-task assignment), "
+                "'integer_program' (general integer/constraint programming via CP-SAT). "
+                "OR-Tools actions require: uv pip install 'retrai[optimize]'."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": (
+                            "Action: 'linear_program', 'minimize', 'tsp', "
+                            "'knapsack', 'assignment', 'integer_program'"
+                        ),
+                    },
+                    "c": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "description": "Objective coefficients (linear_program)",
+                    },
+                    "a_ub": {
+                        "type": "array",
+                        "description": "Inequality constraint matrix A_ub (linear_program)",
+                    },
+                    "b_ub": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "description": "Inequality constraint vector b_ub (linear_program)",
+                    },
+                    "a_eq": {
+                        "type": "array",
+                        "description": "Equality constraint matrix A_eq (linear_program)",
+                    },
+                    "b_eq": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "description": "Equality constraint vector b_eq (linear_program)",
+                    },
+                    "bounds": {
+                        "type": "array",
+                        "description": (
+                            "Variable bounds as [[lb, ub], ...] "
+                            "(linear_program, minimize)"
+                        ),
+                    },
+                    "expression": {
+                        "type": "string",
+                        "description": (
+                            "Python expression f(x) to minimize, "
+                            "e.g. 'x[0]**2 + x[1]**2' (minimize)"
+                        ),
+                    },
+                    "x0": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "description": "Initial guess vector (minimize)",
+                    },
+                    "method": {
+                        "type": "string",
+                        "description": (
+                            "Solver method: 'BFGS', 'Nelder-Mead', 'L-BFGS-B' (minimize); "
+                            "'highs', 'revised simplex' (linear_program)"
+                        ),
+                    },
+                    "distance_matrix": {
+                        "type": "array",
+                        "description": "N×N integer distance matrix (tsp)",
+                    },
+                    "depot": {
+                        "type": "integer",
+                        "description": "Start/end city index (tsp, default 0)",
+                        "default": 0,
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Item values (knapsack)",
+                    },
+                    "weights": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Item weights (knapsack)",
+                    },
+                    "capacity": {
+                        "type": "integer",
+                        "description": "Knapsack weight capacity (knapsack)",
+                    },
+                    "cost_matrix": {
+                        "type": "array",
+                        "description": "N×M integer cost matrix (assignment)",
+                    },
+                    "variables": {
+                        "type": "array",
+                        "description": (
+                            "List of {name, lb, ub} dicts for integer variables "
+                            "(integer_program)"
+                        ),
+                    },
+                    "constraints": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Constraint expressions like 'x + y <= 6' (integer_program)"
+                        ),
+                    },
+                    "objective": {
+                        "type": "string",
+                        "description": (
+                            "Objective expression, e.g. '3*x + 2*y' (integer_program)"
+                        ),
+                    },
+                    "maximize": {
+                        "type": "boolean",
+                        "description": (
+                            "Maximize objective (default True for integer_program)"
+                        ),
+                        "default": True,
+                    },
+                },
+                "required": ["action"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.optimize import optimize
+
+        action = args.pop("action", "")
+        result = await optimize(action=action, cwd=cwd, **args)
+        return result, False
+
+
+class ProfilerTool(BaseTool):
+    """Profile Python code with cProfile or timeit."""
+
+    name = "profiler"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Profile Python code performance. "
+                "Actions: 'profile_code' (cProfile on inline snippet), "
+                "'profile_file' (cProfile on a .py file), "
+                "'timeit' (micro-benchmark an expression). "
+                "Returns top hotspots with cumtime/tottime in ms."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": "Action: 'profile_code', 'profile_file', 'timeit'",
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Python code snippet to profile (profile_code)",
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to .py file to profile (profile_file)",
+                    },
+                    "expression": {
+                        "type": "string",
+                        "description": "Python expression to benchmark (timeit)",
+                    },
+                    "setup": {
+                        "type": "string",
+                        "description": "Setup code for timeit (default 'pass')",
+                        "default": "pass",
+                    },
+                    "top_n": {
+                        "type": "integer",
+                        "description": "Number of top functions to return (default 20)",
+                        "default": 20,
+                    },
+                    "number": {
+                        "type": "integer",
+                        "description": "Iterations for timeit (0 = auto-calibrate)",
+                        "default": 0,
+                    },
+                    "packages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Extra pip packages to install in sandbox",
+                    },
+                    "timeout": {
+                        "type": "number",
+                        "description": "Timeout in seconds (default 60)",
+                        "default": 60,
+                    },
+                },
+                "required": ["action"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.profiler import profile_code
+
+        result = await profile_code(
+            action=args["action"],
+            cwd=cwd,
+            code=args.get("code", ""),
+            file_path=args.get("file_path", ""),
+            expression=args.get("expression", ""),
+            setup=args.get("setup", "pass"),
+            top_n=int(args.get("top_n", 20)),
+            number=int(args.get("number", 0)),
+            packages=args.get("packages"),
+            timeout=float(args.get("timeout", 60)),
+        )
+        return result, False
+
+
+class ComplexityTool(BaseTool):
+    """Analyze Python code complexity (cyclomatic, Halstead, nested loops)."""
+
+    name = "complexity"
+    parallel_safe = True
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Analyze Python source code complexity. "
+                "Actions: 'cyclomatic' (CC per function, flags CC>10), "
+                "'halstead' (volume/difficulty/effort metrics), "
+                "'nested_loops' (detect O(n²) loop smells via AST), "
+                "'summary' (all metrics combined). "
+                "Pass 'source' (inline code) or 'file_path' (relative path)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": (
+                            "Action: 'cyclomatic', 'halstead', 'nested_loops', 'summary'"
+                        ),
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "Inline Python source code to analyze",
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to .py file relative to project root",
+                    },
+                    "cc_threshold": {
+                        "type": "integer",
+                        "description": "Flag functions with CC above this value (default 10)",
+                        "default": 10,
+                    },
+                },
+                "required": ["action"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.complexity import analyze_complexity
+
+        result = await analyze_complexity(
+            action=args["action"],
+            cwd=cwd,
+            source=args.get("source", ""),
+            file_path=args.get("file_path", ""),
+            cc_threshold=int(args.get("cc_threshold", 10)),
+        )
+        return result, False
+
+
+# ──────────────────────────────────────────────────────────────────
+# Memory Profiling
+# ──────────────────────────────────────────────────────────────────
+
+
+class MemoryProfileTool(BaseTool):
+    """Profile memory usage of Python code with tracemalloc."""
+
+    name = "memory_profile"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Profile memory usage of Python code using tracemalloc. "
+                "Actions: 'profile_code' (trace allocations in an inline snippet), "
+                "'profile_file' (trace allocations in a .py file), "
+                "'compare' (compare peak memory of two code snippets). "
+                "Returns top allocations by file/line with size in KB."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": (
+                            "Action: 'profile_code', 'profile_file', 'compare'"
+                        ),
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Python code snippet to profile (profile_code)",
+                    },
+                    "code_a": {
+                        "type": "string",
+                        "description": "First code snippet (compare)",
+                    },
+                    "code_b": {
+                        "type": "string",
+                        "description": "Second code snippet (compare)",
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to .py file (profile_file)",
+                    },
+                    "top_n": {
+                        "type": "integer",
+                        "description": "Top N allocation sites to return (default 10)",
+                        "default": 10,
+                    },
+                    "packages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Extra pip packages to install in sandbox",
+                    },
+                },
+                "required": ["action"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.memory_profile import memory_profile
+
+        result = await memory_profile(
+            action=args["action"],
+            cwd=cwd,
+            code=args.get("code", ""),
+            code_a=args.get("code_a", ""),
+            code_b=args.get("code_b", ""),
+            file_path=args.get("file_path", ""),
+            top_n=int(args.get("top_n", 10)),
+            packages=args.get("packages"),
+        )
+        return result, False
+
+
+# ──────────────────────────────────────────────────────────────────
+# Benchmark Comparison
+# ──────────────────────────────────────────────────────────────────
+
+
+class BenchmarkCompareTool(BaseTool):
+    """Compare two Python implementations head-to-head for speed and memory."""
+
+    name = "benchmark_compare"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Compare two Python implementations head-to-head. "
+                "Runs both with timeit and tracemalloc, returns speedup ratio, "
+                "memory delta, and a verdict. "
+                "Provide 'setup' code shared by both, then 'code_a' and 'code_b'."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "code_a": {
+                        "type": "string",
+                        "description": "First implementation (baseline)",
+                    },
+                    "code_b": {
+                        "type": "string",
+                        "description": "Second implementation (candidate)",
+                    },
+                    "setup": {
+                        "type": "string",
+                        "description": "Shared setup code (imports, data creation)",
+                        "default": "",
+                    },
+                    "label_a": {
+                        "type": "string",
+                        "description": "Label for first implementation (default 'baseline')",
+                        "default": "baseline",
+                    },
+                    "label_b": {
+                        "type": "string",
+                        "description": "Label for second implementation (default 'candidate')",
+                        "default": "candidate",
+                    },
+                    "number": {
+                        "type": "integer",
+                        "description": "Timeit iterations (0 = auto-calibrate)",
+                        "default": 0,
+                    },
+                    "packages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Extra pip packages to install in sandbox",
+                    },
+                },
+                "required": ["code_a", "code_b"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.benchmark_compare import benchmark_compare
+
+        result = await benchmark_compare(
+            code_a=args["code_a"],
+            code_b=args["code_b"],
+            setup=args.get("setup", ""),
+            label_a=args.get("label_a", "baseline"),
+            label_b=args.get("label_b", "candidate"),
+            number=int(args.get("number", 0)),
+            cwd=cwd,
+            packages=args.get("packages"),
+        )
+        return result, False
+
+
+# ──────────────────────────────────────────────────────────────────
+# Dependency Graph
+# ──────────────────────────────────────────────────────────────────
+
+
+class DependencyGraphTool(BaseTool):
+    """Analyze Python import dependencies and function call graphs."""
+
+    name = "dependency_graph"
+    parallel_safe = True
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Analyze Python module import dependencies and call graphs. "
+                "Actions: 'imports' (module-level import graph for a package), "
+                "'calls' (function call graph within a file via AST), "
+                "'cycles' (detect circular imports). "
+                "Returns adjacency list and optionally a DOT/Mermaid diagram."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": "Action: 'imports', 'calls', 'cycles'",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": (
+                            "File or directory path relative to project root. "
+                            "For 'imports'/'cycles': a package directory. "
+                            "For 'calls': a single .py file."
+                        ),
+                    },
+                    "format": {
+                        "type": "string",
+                        "description": (
+                            "Output format: 'json' (adjacency list), "
+                            "'mermaid' (Mermaid diagram), 'dot' (Graphviz DOT)"
+                        ),
+                        "default": "json",
+                    },
+                    "max_depth": {
+                        "type": "integer",
+                        "description": "Max import depth to traverse (default 3)",
+                        "default": 3,
+                    },
+                },
+                "required": ["action", "path"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.dependency_graph import dependency_graph
+
+        result = await dependency_graph(
+            action=args["action"],
+            path=args["path"],
+            cwd=cwd,
+            fmt=args.get("format", "json"),
+            max_depth=int(args.get("max_depth", 3)),
+        )
+        return result, False
+
+
+# ──────────────────────────────────────────────────────────────────
+# Code Intelligence (LSP)
+# ──────────────────────────────────────────────────────────────────
+
+
+class LSPQueryTool(BaseTool):
+    """Query the Language Server for definitions, references, etc."""
+
+    name = "lsp_query"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Query the Language Server Protocol (LSP) for code intelligence. "
+                "Supported actions: 'definition', 'references', 'hover'. "
+                "Requires 'path', 'line' (1-indexed), and 'character' (0-indexed)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["definition", "references", "hover"],
+                        "description": "The LSP action to perform",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to project root",
+                    },
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number (1-indexed)",
+                    },
+                    "character": {
+                        "type": "integer",
+                        "description": "Column number (0-indexed)",
+                        "default": 0,
+                    },
+                },
+                "required": ["action", "path", "line"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.lsp.tool import LSPTool
+
+        tool = LSPTool()
+        return await tool.execute(args, cwd)
+
+
 ALL_BUILTIN_TOOLS: list[type[BaseTool]] = [
     BashExecTool,
     FileReadTool,
@@ -1383,9 +1946,17 @@ ALL_BUILTIN_TOOLS: list[type[BaseTool]] = [
     ExperimentListTool,
     MlTrainTool,
     SqlBenchTool,
+    OptimizeTool,
+    ProfilerTool,
+    ComplexityTool,
+    MemoryProfileTool,
+    BenchmarkCompareTool,
+    DependencyGraphTool,
+    LSPQueryTool,
     BioSearchTool,
     RustBenchTool,
 ]
+
 
 
 def create_default_registry(*, discover_plugins: bool = True) -> ToolRegistry:

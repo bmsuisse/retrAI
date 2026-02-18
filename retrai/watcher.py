@@ -220,6 +220,7 @@ class FileWatcher:
             "goal_reason": "",
             "iteration": 0,
             "max_iterations": self.max_iterations,
+            "max_cost_usd": 0.0,
             "stop_mode": "soft",
             "hitl_enabled": False,
             "model_name": self.model_name,
@@ -229,6 +230,7 @@ class FileWatcher:
             "estimated_cost_usd": 0.0,
             "failed_strategies": [],
             "consecutive_failures": 0,
+            "tool_cache": {},
         }
 
         config = {

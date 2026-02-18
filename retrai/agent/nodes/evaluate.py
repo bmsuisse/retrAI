@@ -30,6 +30,29 @@ async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
         reason = "No goal defined"
         details = {}
 
+    # Cost budget guard — abort if spending limit exceeded
+    max_cost_usd = state.get("max_cost_usd", 0.0)
+    cost_usd = state.get("estimated_cost_usd", 0.0)
+    if max_cost_usd > 0 and cost_usd >= max_cost_usd and not achieved:
+        achieved = False
+        reason = (
+            f"💸 Cost budget exceeded: ${cost_usd:.4f} >= ${max_cost_usd:.4f} limit. "
+            "Stopping to avoid further charges."
+        )
+        details = {"cost_usd": cost_usd, "max_cost_usd": max_cost_usd}
+        if event_bus:
+            await event_bus.publish(
+                AgentEvent(
+                    kind="log",
+                    run_id=run_id,
+                    iteration=new_iteration,
+                    payload={
+                        "message": reason,
+                        "level": "warning",
+                    },
+                )
+            )
+
     if event_bus:
         await event_bus.publish(
             AgentEvent(
