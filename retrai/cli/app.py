@@ -297,6 +297,12 @@ def run(
         "soft", "--stop-mode",
         help="Stop mode: 'soft' (summary on last iter) or 'hard' (immediate stop)",
     ),
+    pattern: str = typer.Option(
+        "default",
+        "--pattern",
+        "-p",
+        help="Agent solving pattern: 'default' | 'mop' (Mixture-of-Personas) | 'swarm'",
+    ),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
@@ -308,6 +314,13 @@ def run(
     """Run an agent goal loop in the terminal.
 
     If no goal is given, retrAI scans the project and auto-detects the right one.
+
+    Agent patterns:
+
+    \b
+    default  Standard plan → act → evaluate → reflect loop
+    mop      Mixture-of-Personas: multiple viewpoints merged before acting
+    swarm    Multi-agent swarm that decomposes and parallelises the goal
     """
     from retrai.config import RunConfig
 
@@ -323,6 +336,35 @@ def run(
     )
 
     validated_stop_mode = stop_mode if stop_mode in ("soft", "hard") else "soft"
+    validated_pattern = pattern if pattern in ("default", "mop", "swarm") else "default"
+
+    # Swarm pattern delegates to the swarm runner
+    if validated_pattern == "swarm":
+        from retrai.cli.runners import run_swarm as _run_swarm
+
+        console.print(
+            Panel(
+                Text.from_markup(
+                    f"[bold cyan]retrAI swarm[/bold cyan]  🐝\n"
+                    f"goal=[bold]{resolved['goal']}[/bold]  "
+                    f"model=[bold]{resolved['model']}[/bold]  "
+                    f"max-iter=[bold]{resolved['max_iterations']}[/bold]\n"
+                    f"[dim]cwd: {resolved_cwd}[/dim]"
+                ),
+                border_style="cyan",
+            )
+        )
+        exit_code = asyncio.run(
+            _run_swarm(
+                description=f"Achieve goal: {resolved['goal']}",
+                cwd=resolved_cwd,
+                model_name=str(resolved["model"]),
+                max_workers=3,
+                max_iter=int(resolved["max_iterations"]),
+            )
+        )
+        raise typer.Exit(code=exit_code)
+
     cfg = RunConfig(
         goal=str(resolved["goal"]),
         cwd=resolved_cwd,
@@ -330,13 +372,18 @@ def run(
         max_iterations=int(resolved["max_iterations"]),
         stop_mode=validated_stop_mode,  # type: ignore[arg-type]
         hitl_enabled=bool(resolved["hitl_enabled"]),
+        agent_pattern=validated_pattern,  # type: ignore[arg-type]
+        mop_enabled=(validated_pattern == "mop"),
     )
 
     console.print(
         Panel(
             Text.from_markup(
-                f"[bold cyan]retrAI[/bold cyan]  [dim]—[/dim]  goal=[bold]{cfg.goal}[/bold]  "
-                f"model=[bold]{cfg.model_name}[/bold]  max-iter=[bold]{cfg.max_iterations}[/bold]  "
+                f"[bold cyan]retrAI[/bold cyan]  [dim]—[/dim]  "
+                f"goal=[bold]{cfg.goal}[/bold]  "
+                f"model=[bold]{cfg.model_name}[/bold]  "
+                f"max-iter=[bold]{cfg.max_iterations}[/bold]  "
+                f"pattern=[bold]{cfg.agent_pattern}[/bold]  "
                 f"stop=[bold]{cfg.stop_mode}[/bold]  "
                 f"hitl=[bold]{'on' if cfg.hitl_enabled else 'off'}[/bold]\n"
                 f"[dim]cwd: {resolved_cwd}[/dim]"

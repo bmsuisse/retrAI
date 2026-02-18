@@ -6,6 +6,7 @@ from retrai.goals.ai_eval import AiEvalGoal
 from retrai.goals.base import GoalBase
 from retrai.goals.bun_goal import BunTestGoal
 from retrai.goals.cargo_goal import CargoTestGoal
+from retrai.goals.creative_goal import CreativeGoal
 from retrai.goals.go_goal import GoTestGoal
 from retrai.goals.make_goal import MakeTestGoal
 from retrai.goals.ml_goal import MlOptimizeGoal
@@ -14,8 +15,10 @@ from retrai.goals.perf_goal import PerfCheckGoal
 from retrai.goals.pyright_goal import PyrightGoal
 from retrai.goals.pytest_goal import PytestGoal
 from retrai.goals.research_goal import ResearchGoal
+from retrai.goals.score_goal import ScoreGoal
 from retrai.goals.shell_goal import ShellGoal
 from retrai.goals.sql_goal import SqlBenchmarkGoal
+from retrai.goals.text_improve_goal import TextImproveGoal
 
 _REGISTRY: dict[str, GoalBase] = {
     "pytest": PytestGoal(),
@@ -31,6 +34,10 @@ _REGISTRY: dict[str, GoalBase] = {
     "ai-eval": AiEvalGoal(),
     "ml-optimize": MlOptimizeGoal(),
     "research": ResearchGoal(),
+    # Non-coding / LLM-scored goals
+    "text-improve": TextImproveGoal(),
+    "creative": CreativeGoal(),
+    "score": ScoreGoal(),
 }
 
 

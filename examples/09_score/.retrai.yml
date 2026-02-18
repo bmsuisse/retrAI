@@ -1,0 +1,12 @@
+goal: score
+task: "Write a 1-page executive summary of the attached research paper on self-improving AI systems."
+input_file: paper.md
+output_file: summary.md
+target_score: 8
+rubric: |
+  Score 0-10 on:
+  - Accuracy: key findings from the paper are faithfully represented (3 pts)
+  - Brevity: summary is ≤400 words and avoids padding (2 pts)
+  - Clarity: no jargon, accessible to a non-specialist executive (2 pts)
+  - Actionability: ends with clear takeaways or next steps (2 pts)
+  - Structure: logical flow with a clear opening, body, and conclusion (1 pt)

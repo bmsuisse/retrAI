@@ -1,0 +1,9 @@
+goal: text-improve
+input_file: draft.md
+output_file: improved.md
+target_score: 8
+criteria:
+  - clarity
+  - conciseness
+  - persuasiveness
+  - structure

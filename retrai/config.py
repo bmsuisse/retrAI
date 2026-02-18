@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 StopMode = Literal["soft", "hard"]
+AgentPattern = Literal["default", "mop", "swarm"]
 
 # Provider definitions — models are fetched dynamically from LiteLLM
 PROVIDER_DEFS: list[dict[str, Any]] = [
@@ -148,6 +149,9 @@ class RunConfig:
     max_iterations: int = 50
     stop_mode: StopMode = "soft"
     hitl_enabled: bool = False
+    agent_pattern: AgentPattern = "default"
+    mop_enabled: bool = False
+    mop_k: int = 3
     sandbox_path: str = ".retrai/sandbox"
     run_id: str = ""
 

@@ -1,6 +1,6 @@
 site_name: retrAI
 site_url: https://bmsuisse.github.io/retrAI
-site_description: Self-solving AI agent loop — point it at any project, give it a goal, watch it fix itself
+site_description: retrAI = retry + AI. Self-solving AI agent loop — point it at any project, give it a goal, watch it fix itself
 site_author: Dominik Peter
 repo_url: https://github.com/bmsuisse/retrAI
 repo_name: bmsuisse/retrAI
@@ -85,6 +85,7 @@ nav:
   - Concepts:
       - How It Works: how-it-works.md
       - Goals: goals.md
+      - Non-Coding Goals: non-coding-goals.md
       - AI Eval Harness: ai-eval.md
   - Reference:
       - CLI: cli.md

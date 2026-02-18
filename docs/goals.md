@@ -33,7 +33,17 @@ A **goal** defines what retrAI tries to achieve. The agent loop runs `goal.check
 | `ml-optimize` | `retrai run ml-optimize` | ML model hits target metric |
 | `shell-goal` | `retrai run shell-goal` | Custom command meets conditions |
 
----
+### LLM-Scored Goals
+
+These goals use an LLM-as-judge to score the agent's output and provide feedback. No test runner needed — just a rubric and a target score.
+
+| Goal | Command | What It Checks |
+|---|---|---|
+| `text-improve` | `retrai run text-improve` | Improved text scores ≥ target on your criteria |
+| `creative` | `retrai run creative` | Creative content scores ≥ target on quality rubric |
+| `score` | `retrai run score` | Any output scores ≥ target on a custom rubric |
+
+→ See [Non-Coding Goals](non-coding-goals.md) for full documentation and examples.
 
 ## Goal Configuration
 
@@ -82,6 +92,46 @@ goal: ml-optimize
 target_metric: accuracy
 target_value: 0.95
 train_script: train.py
+```
+
+### text-improve
+
+```yaml
+goal: text-improve
+input_file: draft.md
+output_file: improved.md
+target_score: 8
+criteria:
+  - clarity
+  - conciseness
+  - persuasiveness
+```
+
+### creative
+
+```yaml
+goal: creative
+prompt: "Write a short story about an AI learning to paint"
+output_file: story.md
+target_score: 8
+style: "literary fiction, melancholic"
+max_words: 800
+```
+
+### score
+
+```yaml
+goal: score
+task: "Summarise this research paper into a 1-page executive summary"
+input_file: paper.md
+output_file: summary.md
+target_score: 8
+rubric: |
+  Score 0-10 on:
+  - Accuracy: key findings preserved (3 pts)
+  - Brevity: ≤400 words (2 pts)
+  - Clarity: no jargon (2 pts)
+  - Actionability: clear next steps (3 pts)
 ```
 
 ---

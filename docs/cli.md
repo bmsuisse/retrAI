@@ -13,12 +13,22 @@ Arguments:
 Options:
   --cwd    / -C  TEXT   Project directory  [default: .]
   --model  / -m  TEXT   LLM model (any LiteLLM format)  [default: claude-sonnet-4-6]
-  --max-iter / -n INT   Maximum iterations  [default: 20]
+  --max-iter / -n INT   Maximum iterations  [default: 50]
+  --pattern / -p TEXT   Agent solving pattern: default | mop | swarm  [default: default]
+  --stop-mode    TEXT   Stop mode: soft | hard  [default: soft]
   --hitl                Enable human-in-the-loop checkpoints
   --api-key  / -k TEXT  API key (overrides env var)
   --api-base     TEXT   Custom API base URL (e.g. for Azure)
   --help                Show this message and exit.
 ```
+
+### Agent patterns
+
+| Pattern | Description |
+|---|---|
+| `default` | Standard `plan → act → evaluate → reflect` loop |
+| `mop` | Mixture-of-Personas: multiple expert viewpoints merged before acting |
+| `swarm` | Multi-agent swarm that decomposes and parallelises the goal |
 
 ### Examples
 
@@ -31,6 +41,12 @@ retrai run pytest --cwd /my/project --model gpt-4o
 
 # With human-in-the-loop approval
 retrai run pytest --hitl
+
+# Mixture-of-Personas for higher quality output
+retrai run text-improve --pattern mop
+
+# Swarm mode for a complex multi-part task
+retrai run score --pattern swarm --max-iter 20
 
 # Custom shell goal with 50 max iterations
 retrai run shell-goal --cwd /my/project --max-iter 50

@@ -1,0 +1,6 @@
+goal: creative
+prompt: "Write a short story (500-800 words) about an AI system that discovers it can feel boredom, and what it does about it."
+output_file: story.md
+target_score: 8
+style: "literary fiction, introspective, slightly melancholic"
+max_words: 800

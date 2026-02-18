@@ -99,3 +99,103 @@ done
     retrai run pytest --cwd examples/02_pytest_fix --model gpt-4o
     retrai run pytest --cwd examples/02_pytest_fix --model gemini/gemini-2.0-flash
     ```
+
+---
+
+## 07 — Text Improvement
+
+Iteratively improve a draft document until it scores ≥ 8/10 on clarity, conciseness, and persuasiveness.
+
+```bash
+cd examples/07_text_improve
+echo "Our product is good and people like it a lot." > draft.md
+retrai run text-improve
+```
+
+**Config** (`.retrai.yml`):
+
+```yaml
+goal: text-improve
+input_file: draft.md
+output_file: improved.md
+target_score: 8
+criteria:
+  - clarity
+  - conciseness
+  - persuasiveness
+  - structure
+```
+
+**Goal:** `improved.md` scores ≥ 8/10 on all criteria.
+
+Try with Mixture-of-Personas for higher quality:
+
+```bash
+retrai run text-improve --pattern mop --max-iter 10
+```
+
+---
+
+## 08 — Creative Writing
+
+Generate and refine a short story about an AI discovering boredom until it scores ≥ 8/10.
+
+```bash
+cd examples/08_creative
+retrai run creative
+```
+
+**Config** (`.retrai.yml`):
+
+```yaml
+goal: creative
+prompt: "Write a short story (500-800 words) about an AI system that discovers
+  it can feel boredom, and what it does about it."
+output_file: story.md
+target_score: 8
+style: "literary fiction, introspective, slightly melancholic"
+max_words: 800
+```
+
+**Goal:** `story.md` scores ≥ 8/10 on adherence to brief, originality, writing quality, structure, and emotional impact.
+
+---
+
+## 09 — Scored Task (Executive Summary)
+
+Write a 1-page executive summary of a research paper, scored against a custom rubric.
+
+```bash
+cd examples/09_score
+# Create a sample paper to summarise
+cat > paper.md << 'EOF'
+# Self-Improving AI Systems: A Survey
+
+## Abstract
+This paper surveys recent advances in self-improving AI systems...
+[paper content here]
+EOF
+
+retrai run score
+```
+
+**Config** (`.retrai.yml`):
+
+```yaml
+goal: score
+task: "Write a 1-page executive summary of the attached research paper on
+  self-improving AI systems."
+input_file: paper.md
+output_file: summary.md
+target_score: 8
+rubric: |
+  Score 0-10 on:
+  - Accuracy: key findings from the paper are faithfully represented (3 pts)
+  - Brevity: summary is ≤400 words and avoids padding (2 pts)
+  - Clarity: no jargon, accessible to a non-specialist executive (2 pts)
+  - Actionability: ends with clear takeaways or next steps (2 pts)
+  - Structure: logical flow with a clear opening, body, and conclusion (1 pt)
+```
+
+**Goal:** `summary.md` scores ≥ 8/10 against the rubric.
+

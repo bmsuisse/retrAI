@@ -39,6 +39,10 @@ def test_list_goals_returns_known_goals():
     assert "shell-goal" in goals
     assert "perf-check" in goals
     assert "sql-benchmark" in goals
+    # Non-coding / LLM-scored goals
+    assert "text-improve" in goals
+    assert "creative" in goals
+    assert "score" in goals
 
 
 def test_get_goal_returns_correct_instance():
