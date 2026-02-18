@@ -410,7 +410,9 @@ async def sql_bench(
         else:
             return json.dumps(
                 {
-                    "error": f"Unknown action '{action}'. Use: run_query, explain_query, profile_table",
+                    "error": (
+                        f"Unknown action '{action}'. Use: run_query, explain_query, profile_table"
+                    ),
                 }
             )
     finally:
