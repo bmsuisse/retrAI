@@ -11,8 +11,8 @@ theme:
   name: material
   palette:
     - scheme: slate
-      primary: deep purple
-      accent: purple
+      primary: black
+      accent: deep purple
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -38,9 +38,9 @@ theme:
   font:
     text: Inter
     code: JetBrains Mono
+  logo: assets/logo.png
   icon:
     repo: fontawesome/brands/github
-    logo: assets/logo.png
 
 extra_css:
   - stylesheets/extra.css

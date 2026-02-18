@@ -1,55 +1,118 @@
-/* ── retrAI docs — purple → dark-blue gradient theme ── */
+/* ── retrAI docs — cohesive dark theme ── */
 
+/* ── Design Tokens ── */
 :root {
-  --retrai-purple-light: #c084fc;
-  --retrai-purple:       #7c3aed;
-  --retrai-purple-dark:  #4c1d95;
-  --retrai-blue-mid:     #1e1b4b;
-  --retrai-blue-deep:    #050b1f;
+  --retrai-bg: #0d1117;
+  --retrai-bg-surface: #161b22;
+  --retrai-bg-elevated: #1c2128;
+  --retrai-border: rgba(139, 92, 246, 0.15);
+  --retrai-border-focus: rgba(139, 92, 246, 0.4);
+  --retrai-violet: #8b5cf6;
+  --retrai-violet-light: #a78bfa;
+  --retrai-violet-pale: #c4b5fd;
+  --retrai-text: #e6edf3;
+  --retrai-text-muted: #8b949e;
+  --retrai-glow: rgba(139, 92, 246, 0.12);
 }
 
-/* ── Hero gradient background on the home page ── */
-.md-header {
-  background: linear-gradient(135deg, #1a0533 0%, #0f0a2e 60%, #050b1f 100%) !important;
-  box-shadow: 0 1px 0 rgba(124, 58, 237, 0.4);
+/* ── Global overrides (slate / dark mode) ── */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: var(--retrai-bg);
+  --md-default-fg-color: var(--retrai-text);
+  --md-primary-fg-color: var(--retrai-violet);
+  --md-primary-bg-color: var(--retrai-bg);
+  --md-accent-fg-color: var(--retrai-violet-light);
+  --md-typeset-a-color: var(--retrai-violet-light);
+  --md-code-bg-color: var(--retrai-bg-surface);
 }
 
-.md-header__title {
-  font-weight: 800;
-  letter-spacing: -0.02em;
+/* ── Header — single unified bar ── */
+[data-md-color-scheme="slate"] .md-header {
+  background: var(--retrai-bg-surface) !important;
+  border-bottom: 1px solid var(--retrai-border);
+  box-shadow: none;
 }
 
-/* Page body gradient */
-.md-main {
-  background: linear-gradient(160deg, #0f0a2e 0%, #050b1f 100%) !important;
-  min-height: 100vh;
+[data-md-color-scheme="slate"] .md-header__title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
+/* ── Tabs bar — blend with header ── */
+[data-md-color-scheme="slate"] .md-tabs {
+  background: var(--retrai-bg-surface) !important;
+  border-bottom: 1px solid var(--retrai-border);
+}
+
+[data-md-color-scheme="slate"] .md-tabs__link {
+  opacity: 0.65;
+  transition: opacity 0.2s ease;
+}
+
+[data-md-color-scheme="slate"] .md-tabs__link:hover,
+[data-md-color-scheme="slate"] .md-tabs__link--active {
+  opacity: 1;
+  color: var(--retrai-violet-light) !important;
+}
+
+/* ── Page body ── */
 [data-md-color-scheme="slate"] .md-main {
-  background: linear-gradient(160deg, #0f0a2e 0%, #050b1f 100%) !important;
+  background: var(--retrai-bg) !important;
 }
 
-/* Sidebar */
-[data-md-color-scheme="slate"] .md-nav {
-  background: rgba(15, 10, 46, 0.9) !important;
+/* ── Sidebar ── */
+[data-md-color-scheme="slate"] .md-sidebar {
+  background: var(--retrai-bg) !important;
 }
 
-/* ── Gradient hero banner (used on index.md with the .hero class) ── */
+[data-md-color-scheme="slate"] .md-nav__link--active {
+  color: var(--retrai-violet-light) !important;
+  font-weight: 600;
+}
+
+[data-md-color-scheme="slate"] .md-nav__link:hover {
+  color: var(--retrai-violet-pale) !important;
+}
+
+/* ── Hero section ── */
 .hero {
   text-align: center;
   padding: 4rem 2rem 3rem;
-  background: linear-gradient(135deg, #1a0533 0%, #2e1065 40%, #0f0a2e 70%, #050b1f 100%);
+  background: var(--retrai-bg-surface);
   border-radius: 16px;
-  margin-bottom: 2rem;
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  box-shadow: 0 0 80px rgba(124, 58, 237, 0.15);
+  margin-bottom: 2.5rem;
+  border: 1px solid var(--retrai-border-focus);
+  box-shadow:
+    0 0 60px var(--retrai-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle gradient glow behind hero */
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero>* {
+  position: relative;
+  z-index: 1;
 }
 
 .hero h1 {
-  font-size: 3.5rem;
+  font-size: 3.2rem;
   font-weight: 900;
   letter-spacing: -0.04em;
-  background: linear-gradient(135deg, #c084fc 0%, #a78bfa 30%, #7c3aed 70%, #1e1b4b 100%);
+  background: linear-gradient(135deg, var(--retrai-violet-pale) 0%, var(--retrai-violet-light) 40%, var(--retrai-violet) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -57,64 +120,143 @@
 }
 
 .hero p {
-  color: #94a3b8;
-  font-size: 1.2rem;
-  max-width: 560px;
+  color: var(--retrai-text-muted);
+  font-size: 1.15rem;
+  max-width: 540px;
   margin: 0 auto 2rem;
+  line-height: 1.6;
 }
 
 .hero .badge {
   display: inline-block;
-  background: rgba(124, 58, 237, 0.2);
-  border: 1px solid rgba(124, 58, 237, 0.5);
-  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--retrai-violet-light);
   border-radius: 999px;
-  padding: 0.3rem 1rem;
-  font-size: 0.85rem;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  margin: 0.25rem;
+  margin: 0.2rem;
+  transition: all 0.2s ease;
+}
+
+.hero .badge:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+  transform: translateY(-1px);
 }
 
 /* ── Code blocks ── */
-.md-typeset pre {
+[data-md-color-scheme="slate"] .md-typeset pre {
   border-radius: 10px;
-  border: 1px solid rgba(124, 58, 237, 0.25);
+  border: 1px solid var(--retrai-border);
+  background: var(--retrai-bg-surface) !important;
 }
 
 [data-md-color-scheme="slate"] .highlight {
-  background: rgba(15, 10, 46, 0.8) !important;
+  background: var(--retrai-bg-surface) !important;
 }
 
 /* ── Admonitions ── */
 [data-md-color-scheme="slate"] .admonition {
-  border-left-color: var(--retrai-purple) !important;
-  background: rgba(124, 58, 237, 0.08) !important;
-}
-
-/* ── Navigation active state ── */
-[data-md-color-scheme="slate"] .md-nav__link--active {
-  color: var(--retrai-purple-light) !important;
+  border-left-color: var(--retrai-violet) !important;
+  background: var(--retrai-bg-elevated) !important;
+  border-radius: 8px;
 }
 
 /* ── Tables ── */
 [data-md-color-scheme="slate"] .md-typeset table:not([class]) {
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: 8px;
+  border: 1px solid var(--retrai-border);
+  border-radius: 10px;
   overflow: hidden;
 }
 
 [data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
-  background: rgba(124, 58, 237, 0.15);
+  background: var(--retrai-bg-elevated);
+  color: var(--retrai-violet-pale);
+  font-weight: 600;
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) td {
+  border-top: 1px solid var(--retrai-border);
+}
+
+/* ── Grid cards ── */
+[data-md-color-scheme="slate"] .md-typeset .grid.cards>ul>li {
+  background: var(--retrai-bg-surface) !important;
+  border: 1px solid var(--retrai-border) !important;
+  border-radius: 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .grid.cards>ul>li:hover {
+  border-color: var(--retrai-border-focus) !important;
+  box-shadow: 0 0 20px var(--retrai-glow);
+}
+
+/* ── Mermaid diagrams ── */
+[data-md-color-scheme="slate"] .mermaid {
+  background: var(--retrai-bg-surface);
+  border-radius: 10px;
+  padding: 1rem;
+  border: 1px solid var(--retrai-border);
 }
 
 /* ── Footer ── */
-.md-footer {
-  background: linear-gradient(135deg, #0f0a2e, #050b1f) !important;
-  border-top: 1px solid rgba(124, 58, 237, 0.2);
+[data-md-color-scheme="slate"] .md-footer {
+  background: var(--retrai-bg-surface) !important;
+  border-top: 1px solid var(--retrai-border);
+}
+
+/* ── Table of contents label ── */
+[data-md-color-scheme="slate"] .md-nav--secondary>.md-nav__title {
+  color: var(--retrai-text-muted);
+  box-shadow: none;
 }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
-::-webkit-scrollbar-thumb { background: var(--retrai-purple); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--retrai-purple-light); }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+/* ── Search ── */
+[data-md-color-scheme="slate"] .md-search__form {
+  background: var(--retrai-bg-elevated) !important;
+  border: 1px solid var(--retrai-border);
+  border-radius: 8px;
+}
+
+/* ── Content links ── */
+[data-md-color-scheme="slate"] .md-typeset a {
+  color: var(--retrai-violet-light);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+[data-md-color-scheme="slate"] .md-typeset a:hover {
+  border-bottom-color: var(--retrai-violet-light);
+}
+
+/* ── Tabs (content tabs) ── */
+[data-md-color-scheme="slate"] .md-typeset .tabbed-labels>label {
+  color: var(--retrai-text-muted);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .tabbed-labels>label--active,
+[data-md-color-scheme="slate"] .md-typeset .tabbed-labels>label:hover {
+  color: var(--retrai-violet-light);
+}
