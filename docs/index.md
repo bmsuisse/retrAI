@@ -14,6 +14,11 @@
   <span class="badge">go-test</span>
 </div>
 
+!!! warning "🚧 Highly Experimental — Not Ready for Production"
+    retrAI is in early, active development. APIs, configuration formats, and behaviours **will change without notice**.
+    Use it for experimentation and side projects, but **do not rely on it in production environments**.
+    Feedback and contributions are very welcome!
+
 ## What is retrAI?
 
 retrAI is an autonomous AI agent that runs a **plan → act → evaluate → repeat** loop powered by [LangGraph](https://langchain-ai.github.io/langgraph/) and [LiteLLM](https://docs.litellm.ai). Give it a goal — failing tests, a slow query, a type error — and it will iteratively fix your code until the goal is achieved.
