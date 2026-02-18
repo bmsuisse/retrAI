@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -69,6 +70,10 @@ class RunManager:
             "model_name": cfg.model_name,
             "cwd": cfg.cwd,
             "run_id": cfg.run_id,
+            "total_tokens": 0,
+            "estimated_cost_usd": 0.0,
+            "failed_strategies": [],
+            "consecutive_failures": 0,
         }
 
         run_config = {
@@ -79,8 +84,11 @@ class RunManager:
             }
         }
 
+        started_at = time.time()
+
         async def _run() -> None:
             from retrai.events.types import AgentEvent
+            from retrai.history import save_run_history
 
             try:
                 final = await graph.ainvoke(initial_state, config=run_config)  # type: ignore[arg-type]
@@ -94,9 +102,28 @@ class RunManager:
                         payload={
                             "status": entry.status,
                             "reason": final.get("goal_reason", ""),
+                            "total_tokens": final.get("total_tokens", 0),
+                            "estimated_cost_usd": final.get("estimated_cost_usd", 0.0),
                         },
                     )
                 )
+                # Persist run history
+                try:
+                    save_run_history(
+                        cwd=cfg.cwd,
+                        run_id=run_id,
+                        goal=cfg.goal,
+                        model=cfg.model_name,
+                        status=entry.status,
+                        iterations=final.get("iteration", 0),
+                        max_iterations=cfg.max_iterations,
+                        total_tokens=final.get("total_tokens", 0),
+                        estimated_cost_usd=final.get("estimated_cost_usd", 0.0),
+                        started_at=started_at,
+                        reason=final.get("goal_reason", ""),
+                    )
+                except Exception:
+                    pass  # Don't let history IO crash a run
             except Exception as e:
                 entry.status = "failed"
                 entry.error = str(e)

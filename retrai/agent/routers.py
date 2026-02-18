@@ -20,7 +20,7 @@ def route_after_evaluate(state: AgentState) -> str:
         return "end"
     if state["hitl_enabled"]:
         return "human_check"
-    return "plan"
+    return "reflect"
 
 
 def route_after_human_check(state: AgentState) -> str:

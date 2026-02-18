@@ -143,6 +143,7 @@ class RunConfig:
     model_name: str = "claude-sonnet-4-6"
     max_iterations: int = 50
     hitl_enabled: bool = False
+    sandbox_path: str = ".retrai/sandbox"
     run_id: str = ""
 
     def __post_init__(self) -> None:

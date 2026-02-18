@@ -9,6 +9,7 @@ from retrai.agent.nodes.act import act_node
 from retrai.agent.nodes.evaluate import evaluate_node
 from retrai.agent.nodes.human_check import human_check_node
 from retrai.agent.nodes.plan import plan_node
+from retrai.agent.nodes.reflect import reflect_node
 from retrai.agent.routers import route_after_evaluate, route_after_human_check, should_call_tools
 from retrai.agent.state import AgentState
 
@@ -19,9 +20,8 @@ def build_graph(hitl_enabled: bool = False):
     Graph topology:
         START → plan → (has tool calls?) → act → evaluate → (achieved?) → END
                      ↘ no tool calls ↗           ↓ continue
+                                           reflect → plan
                                            (hitl?) → human_check → plan
-                                                   ↓ no hitl
-                                                  plan
     """
     builder = StateGraph(AgentState)
 
@@ -29,6 +29,7 @@ def build_graph(hitl_enabled: bool = False):
     builder.add_node("plan", plan_node)
     builder.add_node("act", act_node)
     builder.add_node("evaluate", evaluate_node)
+    builder.add_node("reflect", reflect_node)
     if hitl_enabled:
         builder.add_node("human_check", human_check_node)
 
@@ -45,10 +46,13 @@ def build_graph(hitl_enabled: bool = False):
         route_after_evaluate,
         {
             "end": END,
-            "plan": "plan",
-            "human_check": "human_check" if hitl_enabled else "plan",
+            "reflect": "reflect",
+            "human_check": "human_check" if hitl_enabled else "reflect",
         },
     )
+
+    # Reflect always leads back to plan
+    builder.add_edge("reflect", "plan")
 
     if hitl_enabled:
         builder.add_conditional_edges(

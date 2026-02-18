@@ -1,234 +1,218 @@
-"""Textual TUI for retrAI — with gradient logo and modern layout."""
+"""Textual TUI for retrAI — immersive dashboard with tabs, sparklines, and live stats."""
 
 from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING
 
-from rich.text import Text
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.reactive import reactive
-from textual.widgets import Footer, Header, Label, RichLog, Static
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.widgets import (
+    Footer,
+    Header,
+    RichLog,
+    Static,
+    TabbedContent,
+    TabPane,
+)
+
+from retrai.tui.screens import GraphScreen
+from retrai.tui.widgets import (
+    DashboardSparkline,
+    FileTreeWidget,
+    HelpPanel,
+    IterationTimeline,
+    StatusPanel,
+    TokenSparklineWidget,
+    ToolStatsPanel,
+    ToolUsageTable,
+    build_gradient_logo,
+)
+from retrai.tui.wizard import WizardScreen
 
 if TYPE_CHECKING:
     from retrai.config import RunConfig
 
+# ── Tool-name → file-action mapping ──────────────────────────
 
-LOGO_ART = r"""
- ██████╗ ███████╗████████╗██████╗  █████╗ ██╗
- ██╔══██╗██╔════╝╚══██╔══╝██╔══██╗██╔══██╗██║
- ██████╔╝█████╗     ██║   ██████╔╝███████║██║
- ██╔══██╗██╔══╝     ██║   ██╔══██╗██╔══██║██║
- ██║  ██║███████╗   ██║   ██║  ██║██║  ██║██║
- ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
-"""
-
-STATUS_STYLES = {
-    "IDLE": ("dim", "○"),
-    "RUNNING": ("bold #a78bfa", "◉"),
-    "ACHIEVED": ("bold #4ade80", "✓"),
-    "FAILED": ("bold #f87171", "✗"),
+_TOOL_FILE_ACTIONS: dict[str, str] = {
+    "file_read": "read",
+    "file_write": "write",
+    "file_patch": "patch",
+    "file_list": "list",
+    "bash_exec": "exec",
 }
 
-CSS = """
-Screen {
-    background: #050b1f;
-    layers: base overlay;
-}
 
-#logo-container {
-    width: 100%;
-    height: auto;
-    align: left middle;
-    padding: 1 2;
-    border-bottom: heavy #2e1065;
-}
+class RetrAITUI(App[None]):
+    """Immersive Textual TUI with tabbed dashboard, sparklines, and live stats."""
 
-#logo-label {
-    width: auto;
-    text-align: left;
-}
+    CSS_PATH = "styles.tcss"
 
-#layout {
-    width: 100%;
-    height: 1fr;
-}
-
-#sidebar {
-    width: 36;
-    height: 100%;
-    border-right: heavy #2e1065;
-    background: #0f0a2e;
-    padding: 1 2;
-}
-
-#log-container {
-    height: 100%;
-    padding: 0 1;
-}
-
-#status-title {
-    color: #a78bfa;
-    text-style: bold;
-    margin-bottom: 1;
-    text-align: center;
-}
-
-.info-row {
-    color: #64748b;
-    margin-bottom: 0;
-    text-style: none;
-}
-
-.info-val {
-    color: #e2e8f0;
-}
-
-#status-badge {
-    margin-top: 1;
-    margin-bottom: 1;
-    text-align: center;
-}
-
-#iter-bar {
-    width: 100%;
-    height: 1;
-    background: #1e1b4b;
-    margin-bottom: 1;
-}
-
-#iter-fill {
-    height: 1;
-    width: 0%;
-    background: $accent;
-}
-
-#divider {
-    border-top: heavy #2e1065;
-    height: 1;
-    margin: 1 0;
-}
-
-#log-title {
-    color: #a78bfa;
-    text-style: bold;
-    padding: 0 1 1 1;
-    border-bottom: heavy #2e1065;
-}
-"""
-
-
-def _gradient_logo() -> Text:
-    """Return the ASCII logo as a Rich Text with purple→blue gradient."""
-    colors = [
-        "#c084fc",
-        "#b57bf5",
-        "#a872ee",
-        "#9b69e7",
-        "#8e60e0",
-        "#7c3aed",
-        "#6d28d9",
-        "#5b21b6",
-        "#4c1d95",
-        "#3b1677",
-    ]
-    text = Text(justify="center")
-    lines = LOGO_ART.strip("\n").split("\n")
-    for i, line in enumerate(lines):
-        color = colors[min(i, len(colors) - 1)]
-        text.append(line + "\n", style=f"bold {color}")
-    subtitle = Text("  self-solving AI agent loop  ", style="italic #64748b", justify="left")
-    text.append_text(subtitle)
-    return text
-
-
-class StatusPanel(Static):
-    status: reactive[str] = reactive("IDLE")
-    iteration: reactive[int] = reactive(0)
-
-    def __init__(self, cfg: RunConfig) -> None:
-        super().__init__()
-        self.cfg = cfg
-        self._max = cfg.max_iterations
-
-    def compose(self) -> ComposeResult:
-        from rich.markup import escape
-
-        yield Label("retrAI", id="status-title")
-        yield Label(f"[dim]Goal:[/dim]  {escape(self.cfg.goal)}", classes="info-row")
-        yield Label(f"[dim]Model:[/dim] {escape(self.cfg.model_name[:22])}", classes="info-row")
-        yield Label(f"[dim]CWD:[/dim]   {escape(self.cfg.cwd[:22])}", classes="info-row")
-        yield Label("", id="status-badge")
-        yield Label("", id="iter-label", classes="info-row")
-
-    def on_mount(self) -> None:
-        self._refresh_badge()
-
-    def watch_status(self, value: str) -> None:
-        self._refresh_badge()
-
-    def watch_iteration(self, value: int) -> None:
-        pct = min(100, round((value / max(self._max, 1)) * 100))
-        try:
-            self.query_one("#iter-label", Label).update(
-                f"[dim]Iter:[/dim]  [{value}/{self._max}]  [dim]{pct}%[/dim]"
-            )
-        except Exception:
-            pass
-
-    def _refresh_badge(self) -> None:
-        style, icon = STATUS_STYLES.get(self.status, ("white", "?"))
-        try:
-            self.query_one("#status-badge", Label).update(
-                f"[{style}] {icon}  {self.status} [{style}]"
-            )
-        except Exception:
-            pass
-
-
-class RetrAITUI(App):
-    """Modern Textual TUI with gradient logo."""
-
-    CSS = CSS
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("ctrl+c", "quit", "Quit"),
+        ("1", "switch_tab('events')", "Events"),
+        ("2", "switch_tab('dashboard')", "Dashboard"),
+        ("3", "switch_tab('files')", "Files"),
+        ("4", "switch_tab('help')", "Help"),
+        ("s", "toggle_sidebar", "Sidebar"),
+        ("t", "scroll_top", "Top"),
+        ("b", "scroll_bottom", "Bottom"),
+        ("c", "clear_log", "Clear"),
+        ("g", "show_graph", "Graph"),
+        ("w", "show_wizard", "Wizard"),
+        ("question_mark", "switch_tab('help')", "Help"),
     ]
 
     def __init__(self, cfg: RunConfig) -> None:
         super().__init__()
         self.cfg = cfg
         self._status_panel: StatusPanel | None = None
+        self._tool_stats: ToolStatsPanel | None = None
+        self._token_spark: TokenSparklineWidget | None = None
         self._rich_log: RichLog | None = None
+        self._timeline: IterationTimeline | None = None
+        self._tool_table: ToolUsageTable | None = None
+        self._dash_spark: DashboardSparkline | None = None
+        self._file_tree: FileTreeWidget | None = None
+        self._iter_tokens: int = 0
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        # Big gradient logo at the top
-        logo = Static(_gradient_logo(), id="logo-label")
-        yield Container(logo, id="logo-container")
-        # Main layout
-        with Horizontal(id="layout"):
+
+        # Logo banner
+        logo = Static(build_gradient_logo(), id="logo-label")
+        yield Container(logo, id="logo-banner")
+
+        # Main layout: sidebar + tabbed content
+        with Horizontal(id="main-layout"):
+            # ── Sidebar ──
             with Vertical(id="sidebar"):
                 self._status_panel = StatusPanel(self.cfg)
                 yield self._status_panel
-            with Vertical(id="log-container"):
-                yield Label("◈ Event Log", id="log-title")
-                self._rich_log = RichLog(highlight=True, markup=True, wrap=True)
-                yield self._rich_log
+
+                yield Static("", classes="sidebar-divider")
+
+                self._tool_stats = ToolStatsPanel()
+                yield self._tool_stats
+
+                yield Static("", classes="sidebar-divider")
+
+                self._token_spark = TokenSparklineWidget()
+                yield self._token_spark
+
+            # ── Content Area ──
+            with Vertical(id="content-area"):
+                with TabbedContent(id="tabs"):
+                    # Tab 1: Event Log
+                    with TabPane("📋 Events", id="events"):
+                        self._rich_log = RichLog(
+                            highlight=True,
+                            markup=True,
+                            wrap=True,
+                            id="event-log",
+                        )
+                        yield self._rich_log
+
+                    # Tab 2: Dashboard
+                    with TabPane("📊 Dashboard", id="dashboard"):
+                        with VerticalScroll(id="dashboard-pane"):
+                            # Timeline
+                            self._timeline = IterationTimeline()
+                            yield self._timeline
+
+                            # Grid: tool table + sparkline
+                            with Horizontal(id="dashboard-grid"):
+                                with Container(classes="dash-card"):
+                                    self._tool_table = ToolUsageTable()
+                                    yield self._tool_table
+
+                                with Container(classes="dash-card"):
+                                    self._dash_spark = DashboardSparkline()
+                                    yield self._dash_spark
+
+                    # Tab 3: Files
+                    with TabPane("📁 Files", id="files"):
+                        self._file_tree = FileTreeWidget()
+                        yield self._file_tree
+
+                    # Tab 4: Help
+                    with TabPane("❓ Help", id="help"):
+                        yield HelpPanel()
+
         yield Footer()
 
     def on_mount(self) -> None:
         self.title = f"retrAI — {self.cfg.goal}"
         self.sub_title = self.cfg.model_name
-        self.run_worker(self._run_agent(), exclusive=True)
+        if not self.cfg.goal:
+            # No goal configured — show setup wizard
+            self.action_show_wizard()
+        else:
+            self._write("[bold #a78bfa]▶ Starting agent…[/bold #a78bfa]")
+            self.run_worker(self._run_agent(), exclusive=True)
+
+    # ── Actions ───────────────────────────────────────────────
+
+    def action_switch_tab(self, tab_id: str) -> None:
+        """Switch to a specific tab by ID."""
+        try:
+            self.query_one(TabbedContent).active = tab_id
+        except Exception:
+            pass
+
+    def action_toggle_sidebar(self) -> None:
+        """Toggle sidebar visibility."""
+        try:
+            sidebar = self.query_one("#sidebar")
+            sidebar.display = not sidebar.display
+        except Exception:
+            pass
+
+    def action_scroll_top(self) -> None:
+        """Scroll event log to top."""
+        if self._rich_log:
+            self._rich_log.scroll_home()
+
+    def action_scroll_bottom(self) -> None:
+        """Scroll event log to bottom."""
+        if self._rich_log:
+            self._rich_log.scroll_end()
+
+    def action_clear_log(self) -> None:
+        """Clear the event log."""
+        if self._rich_log:
+            self._rich_log.clear()
+            self._write("[dim]Log cleared[/dim]")
+
+    def action_show_graph(self) -> None:
+        """Show the agent graph visualization."""
+        self.push_screen(GraphScreen(hitl_enabled=self.cfg.hitl_enabled))
+
+    def action_show_wizard(self) -> None:
+        """Show the experiment setup wizard."""
+
+        def on_wizard_result(result: RunConfig | None) -> None:
+            if result is None:
+                if not self.cfg.goal:
+                    # No goal was ever set — quit
+                    self.exit()
+                return
+            self.cfg = result
+            self.title = f"retrAI — {self.cfg.goal}"
+            self.sub_title = self.cfg.model_name
+            self._write("[bold #a78bfa]▶ Starting agent…[/bold #a78bfa]")
+            self.run_worker(self._run_agent(), exclusive=True)
+
+        self.push_screen(WizardScreen(cwd=self.cfg.cwd), on_wizard_result)
+
+    # ── Agent Runner ──────────────────────────────────────────
 
     async def _run_agent(self) -> None:
         from retrai.agent.graph import build_graph
         from retrai.events.bus import AsyncEventBus
         from retrai.goals.registry import get_goal
-
-        self._write("[bold #a78bfa]▶ Starting agent…[/bold #a78bfa]")
 
         goal = get_goal(self.cfg.goal)
         bus = AsyncEventBus()
@@ -246,6 +230,10 @@ class RetrAITUI(App):
             "model_name": self.cfg.model_name,
             "cwd": self.cfg.cwd,
             "run_id": self.cfg.run_id,
+            "total_tokens": 0,
+            "estimated_cost_usd": 0.0,
+            "failed_strategies": [],
+            "consecutive_failures": 0,
         }
         run_config = {
             "configurable": {
@@ -259,7 +247,9 @@ class RetrAITUI(App):
             self._status_panel.status = "RUNNING"
 
         q = await bus.subscribe()
-        graph_task = asyncio.create_task(graph.ainvoke(initial_state, config=run_config))  # type: ignore[arg-type]
+        graph_task = asyncio.create_task(
+            graph.ainvoke(initial_state, config=run_config)  # type: ignore[arg-type]
+        )
 
         async def consume() -> None:
             async for event in bus.iter_events(q):
@@ -281,19 +271,37 @@ class RetrAITUI(App):
             if self._status_panel:
                 self._status_panel.status = "ACHIEVED" if achieved else "FAILED"
                 self._status_panel.iteration = final_state.get("iteration", 0)
-            color = "#4ade80" if achieved else "#f87171"
-            icon = "✓" if achieved else "✗"
-            self._write(
-                f"\n[bold {color}]{icon} Run {'ACHIEVED' if achieved else 'FAILED'}[/bold {color}]"
-            )
 
-    def _handle_event(self, event) -> None:
-        kind = event.kind
-        payload = event.payload
-        iteration = event.iteration
+            if achieved:
+                self._write(
+                    "\n[bold #4ade80]✓ GOAL ACHIEVED[/bold #4ade80]"
+                )
+                self.notify(
+                    "Goal achieved! 🎉",
+                    title="retrAI",
+                    severity="information",
+                )
+                self.bell()
+            else:
+                self._write(
+                    "\n[bold #f87171]✗ GOAL NOT ACHIEVED[/bold #f87171]"
+                )
+                self.notify(
+                    "Goal not achieved.",
+                    title="retrAI",
+                    severity="warning",
+                )
+
+    # ── Event Handler ─────────────────────────────────────────
+
+    def _handle_event(self, event: object) -> None:
+        kind = getattr(event, "kind", "")
+        payload: dict = getattr(event, "payload", {})
+        iteration: int = getattr(event, "iteration", 0)
 
         if kind == "step_start":
             node = payload.get("node", "?")
+            self._iter_tokens = 0  # Reset per-iteration token counter
             header = (
                 f"\n[bold #7c3aed]┌─[/bold #7c3aed]"
                 f" [bold #a78bfa]iter {iteration}[/bold #a78bfa]"
@@ -303,38 +311,86 @@ class RetrAITUI(App):
             self._write(header)
             if self._status_panel:
                 self._status_panel.iteration = iteration
+            if self._timeline and node == "plan":
+                self._timeline.add_running_marker()
 
         elif kind == "tool_call":
             tool = payload.get("tool", "?")
             args = payload.get("args", {})
-            arg_str = str(args)[:70]
-            self._write(f"  [#38bdf8]⟶ {tool}[/#38bdf8] [dim]{arg_str}[/dim]")
+            arg_str = self._format_tool_args(tool, args)
+            self._write(
+                f"  [#38bdf8]⟶ {tool}[/#38bdf8] [dim]{arg_str}[/dim]"
+            )
+            # Track file activity
+            self._track_file(tool, args)
 
         elif kind == "tool_result":
             tool = payload.get("tool", "?")
             err = payload.get("error", False)
             content = str(payload.get("content", ""))[:150]
             if err:
-                self._write(f"  [#f87171]✗ {tool}[/#f87171] [dim]{content!r}[/dim]")
+                self._write(
+                    f"  [#f87171]✗ {tool}[/#f87171] [dim]{content!r}[/dim]"
+                )
             else:
-                self._write(f"  [#4ade80]✓ {tool}[/#4ade80] [dim]{content!r}[/dim]")
+                self._write(
+                    f"  [#4ade80]✓ {tool}[/#4ade80] [dim]{content!r}[/dim]"
+                )
+            # Update tool stats
+            if self._tool_stats:
+                self._tool_stats.record_call(tool, error=err)
+            if self._tool_table:
+                self._tool_table.record(tool, error=err)
+
+        elif kind == "llm_usage":
+            total = payload.get("total_tokens", 0)
+            prompt = payload.get("prompt_tokens", 0)
+            completion = payload.get("completion_tokens", 0)
+            self._iter_tokens += total
+            self._write(
+                f"  [#a78bfa]◈ tokens:[/#a78bfa] "
+                f"[dim]{prompt}in + {completion}out = {total}[/dim]"
+            )
+            if self._status_panel:
+                self._status_panel.total_tokens += total
 
         elif kind == "goal_check":
             achieved = payload.get("achieved", False)
             reason = payload.get("reason", "")
             if achieved:
-                self._write(f"  [bold #4ade80]◉ GOAL: {reason}[/bold #4ade80]")
+                self._write(
+                    f"  [bold #4ade80]◉ GOAL: {reason}[/bold #4ade80]"
+                )
             else:
                 self._write(f"  [#fbbf24]◌ {reason}[/#fbbf24]")
+            if self._timeline:
+                self._timeline.replace_last_marker(achieved)
 
         elif kind == "human_check_required":
-            self._write("[bold #fb923c]⏸  Human approval required[/bold #fb923c]")
+            self._write(
+                "[bold #fb923c]⏸  Human approval required[/bold #fb923c]"
+            )
+            self.notify(
+                "Human approval required",
+                title="retrAI — HITL",
+                severity="warning",
+            )
 
         elif kind == "iteration_complete":
             n = payload.get("iteration", 0)
-            self._write(f"[dim #2e1065]└─────────────────────────── iteration {n} ──[/dim #2e1065]")
+            self._write(
+                f"[dim #2e1065]└───────────────────────"
+                f"──── iteration {n} ──[/dim #2e1065]"
+            )
             if self._status_panel:
                 self._status_panel.iteration = n
+            # Feed sparklines with this iteration's token usage
+            if self._iter_tokens > 0:
+                if self._token_spark:
+                    self._token_spark.append(self._iter_tokens)
+                if self._dash_spark:
+                    self._dash_spark.append(self._iter_tokens)
+            self._iter_tokens = 0
 
         elif kind == "run_end":
             status = payload.get("status", "?")
@@ -344,6 +400,44 @@ class RetrAITUI(App):
             err = payload.get("error", "?")
             self._write(f"[bold #f87171]ERROR: {err}[/bold #f87171]")
 
+        elif kind == "log":
+            msg = payload.get("message", "")
+            self._write(f"[dim]{msg}[/dim]")
+
+    # ── Helpers ────────────────────────────────────────────────
+
     def _write(self, text: str) -> None:
         if self._rich_log:
             self._rich_log.write(text)
+
+    def _format_tool_args(self, tool: str, args: dict) -> str:
+        """Format tool args for compact display."""
+        if tool in ("bash_exec",):
+            cmd = args.get("command", "")
+            return cmd[:80] if len(cmd) <= 80 else cmd[:77] + "…"
+        if tool in ("file_read", "file_write", "file_patch", "file_list"):
+            path = args.get("path", "")
+            return path[:60]
+        if tool == "web_search":
+            return args.get("query", "")[:60]
+        # Generic fallback
+        parts: list[str] = []
+        for k, v in args.items():
+            v_str = repr(v) if not isinstance(v, str) else v[:40]
+            parts.append(f"{k}={v_str}")
+        return ", ".join(parts)[:80]
+
+    def _track_file(self, tool: str, args: dict) -> None:
+        """Track file activity in the file tree."""
+        action = _TOOL_FILE_ACTIONS.get(tool)
+        if not action or not self._file_tree:
+            return
+        path = args.get("path") or args.get("command", "")
+        if tool == "bash_exec":
+            # Try to extract file paths from commands, skip generic commands
+            return
+        if path:
+            # Normalize path
+            clean = path.lstrip("./")
+            if clean:
+                self._file_tree.add_file(clean, action=action)

@@ -69,6 +69,9 @@ async def test_graph_runs_to_end_when_goal_passes(passing_project: Path, mock_ll
         "cwd": str(passing_project),
         "run_id": "smoke-test-1",
         "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "failed_strategies": [],
+        "consecutive_failures": 0,
     }
     run_config = {
         "configurable": {
@@ -105,6 +108,9 @@ async def test_graph_stops_at_max_iterations(failing_project: Path, mock_llm: Ma
         "cwd": str(failing_project),
         "run_id": "smoke-test-2",
         "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "failed_strategies": [],
+        "consecutive_failures": 0,
     }
     run_config = {
         "configurable": {
@@ -143,6 +149,9 @@ async def test_graph_emits_events(passing_project: Path, mock_llm: MagicMock):
         "cwd": str(passing_project),
         "run_id": "smoke-test-3",
         "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "failed_strategies": [],
+        "consecutive_failures": 0,
     }
     run_config = {
         "configurable": {

@@ -62,30 +62,39 @@ async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
 
     # Inject goal status into conversation so the LLM knows where it stands
     remaining = state["max_iterations"] - new_iteration
+    cost_usd = state.get("estimated_cost_usd", 0.0)
+    cost_str = f" | Cost: ${cost_usd:.4f}" if cost_usd > 0 else ""
+    tokens = state.get("total_tokens", 0)
+    token_str = f" | Tokens: {tokens:,}" if tokens > 0 else ""
+
     if achieved:
         status_msg = HumanMessage(
             content=(
-                f"[Iteration {new_iteration}/{state['max_iterations']}] "
+                f"[Iteration {new_iteration}/{state['max_iterations']}"
+                f"{token_str}{cost_str}] "
                 f"✅ Goal ACHIEVED! {reason}"
             )
         )
     elif new_iteration >= state["max_iterations"]:
         status_msg = HumanMessage(
             content=(
-                f"[Iteration {new_iteration}/{state['max_iterations']}] "
+                f"[Iteration {new_iteration}/{state['max_iterations']}"
+                f"{token_str}{cost_str}] "
                 f"⛔ Max iterations reached. Final status: {reason}"
             )
         )
     else:
         status_msg = HumanMessage(
             content=(
-                f"[Iteration {new_iteration}/{state['max_iterations']}] "
+                f"[Iteration {new_iteration}/{state['max_iterations']}"
+                f"{token_str}{cost_str}] "
                 f"Goal NOT YET achieved. {reason}\n\n"
                 f"You have {remaining} iterations remaining. "
                 "DO NOT give up. Analyze what went wrong and try a "
                 "different approach. If your current strategy isn't "
                 "working, consider:\n"
                 "- Reading the error messages more carefully\n"
+                "- Using `grep_search` to find related code\n"
                 "- Trying an alternative solution\n"
                 "- Searching the web for similar issues\n"
                 "- Running diagnostic commands to gather more info\n"
@@ -94,11 +103,18 @@ async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
             )
         )
 
+    # Track consecutive failures for the reflect node
+    if achieved:
+        consecutive = 0
+    else:
+        consecutive = state.get("consecutive_failures", 0) + 1
+
     return {
         "messages": [status_msg],
         "goal_achieved": achieved_final,
         "goal_reason": reason_final,
         "iteration": new_iteration,
+        "consecutive_failures": consecutive,
     }
 
 

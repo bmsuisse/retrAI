@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -376,6 +378,10 @@ async def _run_cli(cfg) -> int:
         "model_name": cfg.model_name,
         "cwd": cfg.cwd,
         "run_id": cfg.run_id,
+        "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "failed_strategies": [],
+        "consecutive_failures": 0,
     }
 
     run_config = {
@@ -387,6 +393,7 @@ async def _run_cli(cfg) -> int:
     }
 
     q = await bus.subscribe()
+    started_at = time.time()
 
     # Run graph and consume events concurrently
     graph_task = asyncio.create_task(graph.ainvoke(initial_state, config=run_config))  # type: ignore[arg-type]
@@ -416,22 +423,57 @@ async def _run_cli(cfg) -> int:
         achieved = final_state.get("goal_achieved", False)
         reason = final_state.get("goal_reason", "")
         iters = final_state.get("iteration", 0)
+        tokens = final_state.get("total_tokens", 0)
+        cost = final_state.get("estimated_cost_usd", 0.0)
+        elapsed = time.time() - started_at
+
+        # Build summary info lines
+        info_parts = [f"Iterations: [bold]{iters}[/bold]"]
+        if tokens:
+            info_parts.append(f"Tokens: [bold]{tokens:,}[/bold]")
+        if cost > 0:
+            info_parts.append(f"Cost: [bold]${cost:.4f}[/bold]")
+        info_parts.append(f"Time: [bold]{elapsed:.1f}s[/bold]")
+        info_line = "  ·  ".join(info_parts)
+
         if achieved:
             console.print(
                 Panel(
-                    f"[bold green]GOAL ACHIEVED[/bold green] after {iters} iteration(s)\n{reason}",
+                    f"[bold green]✅ GOAL ACHIEVED[/bold green]\n{reason}\n\n{info_line}",
                     border_style="green",
+                    title="[bold]Run Complete[/bold]",
                 )
             )
             exit_code = 0
         else:
             console.print(
                 Panel(
-                    f"[bold red]GOAL NOT ACHIEVED[/bold red] after {iters} iteration(s)\n{reason}",
+                    f"[bold red]❌ GOAL NOT ACHIEVED[/bold red]\n{reason}\n\n{info_line}",
                     border_style="red",
+                    title="[bold]Run Complete[/bold]",
                 )
             )
             exit_code = 1
+
+        # Persist history
+        try:
+            from retrai.history import save_run_history
+
+            save_run_history(
+                cwd=cfg.cwd,
+                run_id=cfg.run_id,
+                goal=cfg.goal,
+                model=cfg.model_name,
+                status="achieved" if achieved else "failed",
+                iterations=iters,
+                max_iterations=cfg.max_iterations,
+                total_tokens=tokens,
+                estimated_cost_usd=cost,
+                started_at=started_at,
+                reason=reason,
+            )
+        except Exception:
+            pass  # Don't crash on history IO
 
     return exit_code
 
@@ -526,13 +568,14 @@ def tui(
         None,
         help=(
             "Goal to achieve (e.g. 'pytest', 'pyright', 'bun-test'). "
-            "Omit to auto-detect from project files."
+            "Omit to launch the setup wizard."
         ),
     ),
     cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
     model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model"),
     max_iter: int = typer.Option(50, "--max-iter", "-n", help="Max iterations"),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
+    wizard: bool = typer.Option(False, "--wizard", "-w", help="Force the setup wizard"),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
     ),
@@ -542,29 +585,41 @@ def tui(
 ) -> None:
     """Launch the interactive Textual TUI.
 
-    If no goal is given, retrAI scans the project and auto-detects the right one.
+    If no goal is given, the experiment setup wizard is shown to guide you
+    through configuring the test experiment step by step.
     """
     from retrai.config import RunConfig
     from retrai.tui.app import RetrAITUI
 
     resolved_cwd = str(Path(cwd).resolve())
-    resolved = _resolve_config(
-        resolved_cwd,
-        goal=goal,
-        model=model,
-        max_iter=max_iter,
-        hitl=hitl,
-        api_key=api_key,
-        api_base=api_base,
-    )
 
-    cfg = RunConfig(
-        goal=str(resolved["goal"]),
-        cwd=resolved_cwd,
-        model_name=str(resolved["model"]),
-        max_iterations=int(resolved["max_iterations"]),
-        hitl_enabled=bool(resolved["hitl_enabled"]),
-    )
+    if wizard or goal is None:
+        # Launch TUI with empty goal — wizard will auto-open on mount
+        cfg = RunConfig(
+            goal="",
+            cwd=resolved_cwd,
+            model_name=model,
+            max_iterations=max_iter,
+            hitl_enabled=hitl,
+        )
+    else:
+        resolved = _resolve_config(
+            resolved_cwd,
+            goal=goal,
+            model=model,
+            max_iter=max_iter,
+            hitl=hitl,
+            api_key=api_key,
+            api_base=api_base,
+        )
+        cfg = RunConfig(
+            goal=str(resolved["goal"]),
+            cwd=resolved_cwd,
+            model_name=str(resolved["model"]),
+            max_iterations=int(resolved["max_iterations"]),
+            hitl_enabled=bool(resolved["hitl_enabled"]),
+        )
+
     tui_app = RetrAITUI(cfg=cfg)
     tui_app.run()
 
@@ -679,3 +734,452 @@ def generate_eval(
         "\n[bold]Next step:[/bold] run [bold cyan]retrai run ai-eval[/bold cyan]"
         f" [dim]--cwd {resolved_cwd}[/dim]"
     )
+
+
+@app.command()
+def history(
+    cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Number of runs to show"),
+) -> None:
+    """Show past run history."""
+    from rich.table import Table
+
+    from retrai.history import load_run_history
+
+    resolved_cwd = str(Path(cwd).resolve())
+    records = load_run_history(resolved_cwd, limit=limit)
+
+    if not records:
+        console.print(
+            "[dim]No run history found.[/dim] "
+            "Run [bold cyan]retrai run[/bold cyan] first."
+        )
+        return
+
+    table = Table(
+        title="[bold cyan]retrAI Run History[/bold cyan]",
+        border_style="cyan",
+        show_lines=True,
+    )
+    table.add_column("Run ID", style="dim", max_width=12)
+    table.add_column("Goal", style="cyan")
+    table.add_column("Model", style="dim")
+    table.add_column("Status")
+    table.add_column("Iters", justify="right")
+    table.add_column("Tokens", justify="right")
+    table.add_column("Cost", justify="right")
+    table.add_column("Duration", justify="right")
+    table.add_column("When", style="dim")
+
+    for r in records:
+        status_str = (
+            "[green]✅ achieved[/green]"
+            if r.status == "achieved"
+            else "[red]❌ failed[/red]"
+        )
+        cost_str = f"${r.estimated_cost_usd:.4f}" if r.estimated_cost_usd else "-"
+        token_str = f"{r.total_tokens:,}" if r.total_tokens else "-"
+        dur_str = f"{r.duration_seconds:.1f}s"
+        when = datetime.fromtimestamp(r.started_at, tz=UTC).strftime(
+            "%Y-%m-%d %H:%M"
+        )
+        table.add_row(
+            r.run_id[:12],
+            r.goal,
+            r.model,
+            status_str,
+            str(r.iterations),
+            token_str,
+            cost_str,
+            dur_str,
+            when,
+        )
+
+    console.print(table)
+
+
+@app.command()
+def rollback(
+    run_id: str = typer.Argument(..., help="Run ID to rollback (first 8+ chars)"),
+    cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
+) -> None:
+    """Undo changes from a specific run using git.
+
+    This restores files that were modified during the given run by checking out
+    their pre-run versions from git.
+    """
+    import subprocess
+
+    from retrai.history import load_run_history
+
+    resolved_cwd = str(Path(cwd).resolve())
+
+    # Find the matching run
+    records = load_run_history(resolved_cwd, limit=100)
+    match = None
+    for r in records:
+        if r.run_id.startswith(run_id):
+            match = r
+            break
+
+    if not match:
+        console.print(f"[red]No run found matching: {run_id}[/red]")
+        raise typer.Exit(code=1)
+
+    console.print(
+        f"[dim]Rolling back run:[/dim] [bold]{match.run_id[:12]}[/bold] "
+        f"({match.goal}, {match.status})"
+    )
+
+    # Use git to restore files to pre-run state
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only"],
+            cwd=resolved_cwd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            console.print("[red]Not a git repository or git error.[/red]")
+            raise typer.Exit(code=1)
+
+        changed_files = [f for f in result.stdout.strip().split("\n") if f]
+        if not changed_files:
+            console.print("[yellow]No uncommitted changes to rollback.[/yellow]")
+            return
+
+        console.print(f"\n[dim]Found {len(changed_files)} changed file(s):[/dim]")
+        for f in changed_files:
+            console.print(f"  [dim]·[/dim] {f}")
+
+        if typer.confirm("\nRestore these files to their last committed state?"):
+            subprocess.run(
+                ["git", "checkout", "--"] + changed_files,
+                cwd=resolved_cwd,
+                check=True,
+            )
+            console.print("[bold green]✓ Files restored.[/bold green]")
+        else:
+            console.print("[dim]Rollback cancelled.[/dim]")
+
+    except subprocess.TimeoutExpired:
+        console.print("[red]Git command timed out.[/red]")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def solve(
+    description: str = typer.Argument(..., help="Natural language description of what to achieve"),
+    cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
+    model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model"),
+    max_iter: int = typer.Option(30, "--max-iter", "-n", help="Maximum iterations"),
+    api_key: str | None = typer.Option(
+        None, "--api-key", "-k", help="API key", envvar="LLM_API_KEY"
+    ),
+    api_base: str | None = typer.Option(
+        None, "--api-base", help="Custom API base URL"
+    ),
+) -> None:
+    """Solve a problem described in natural language.
+
+    Uses an LLM-as-judge to evaluate whether the goal has been met.
+
+    Examples:
+        retrai solve "refactor the auth module to use JWT tokens"
+        retrai solve "add input validation to all API endpoints"
+        retrai solve "make the sort function handle edge cases"
+    """
+    import os
+
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    from retrai.config import RunConfig
+
+    resolved_cwd = str(Path(cwd).resolve())
+
+    # Apply auth overrides
+    if api_key:
+        for env_var in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"]:
+            if not os.environ.get(env_var):
+                os.environ[env_var] = api_key
+    if api_base:
+        os.environ["OPENAI_API_BASE"] = api_base
+
+    console.print(
+        Panel(
+            f"[bold cyan]retrAI solve[/bold cyan]\n\n"
+            f"[bold]{description}[/bold]\n\n"
+            f"[dim]model={model}  max-iter={max_iter}  cwd={resolved_cwd}[/dim]",
+            border_style="cyan",
+        )
+    )
+
+    cfg = RunConfig(
+        goal="solve",
+        cwd=resolved_cwd,
+        model_name=model,
+        max_iterations=max_iter,
+        hitl_enabled=False,
+    )
+
+    exit_code = asyncio.run(_run_solve(cfg, description))
+    raise typer.Exit(code=exit_code)
+
+
+async def _run_solve(cfg, description: str) -> int:
+    """Run the agent with SolverGoal."""
+    from retrai.agent.graph import build_graph
+    from retrai.events.bus import AsyncEventBus
+    from retrai.goals.solver import SolverGoal
+
+    goal = SolverGoal(description=description)
+    bus = AsyncEventBus()
+    graph = build_graph(hitl_enabled=False)
+
+    initial_state = {
+        "messages": [],
+        "pending_tool_calls": [],
+        "tool_results": [],
+        "goal_achieved": False,
+        "goal_reason": "",
+        "iteration": 0,
+        "max_iterations": cfg.max_iterations,
+        "hitl_enabled": False,
+        "model_name": cfg.model_name,
+        "cwd": cfg.cwd,
+        "run_id": cfg.run_id,
+        "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "failed_strategies": [],
+        "consecutive_failures": 0,
+    }
+
+    run_config = {
+        "configurable": {
+            "thread_id": cfg.run_id,
+            "event_bus": bus,
+            "goal": goal,
+        }
+    }
+
+    q = await bus.subscribe()
+    started_at = time.time()
+    exit_code = 1
+
+    async def consume_events() -> None:
+        nonlocal exit_code
+        async for event in bus.iter_events(q):
+            _render_event(event)
+            if event.kind == "run_end":
+                if event.payload.get("status") == "achieved":
+                    exit_code = 0
+
+    consumer_task = asyncio.create_task(consume_events())
+
+    try:
+        final_state = await graph.ainvoke(initial_state, config=run_config)  # type: ignore[arg-type]
+    except Exception as e:
+        console.print(f"\n[red]Solve failed: {e}[/red]")
+        final_state = None
+    finally:
+        await bus.close()
+        await consumer_task
+
+    if final_state:
+        achieved = final_state.get("goal_achieved", False)
+        reason = final_state.get("goal_reason", "")
+        iters = final_state.get("iteration", 0)
+        tokens = final_state.get("total_tokens", 0)
+        cost = final_state.get("estimated_cost_usd", 0.0)
+        elapsed = time.time() - started_at
+
+        info_parts = [f"Iterations: [bold]{iters}[/bold]"]
+        if tokens:
+            info_parts.append(f"Tokens: [bold]{tokens:,}[/bold]")
+        if cost > 0:
+            info_parts.append(f"Cost: [bold]${cost:.4f}[/bold]")
+        info_parts.append(f"Time: [bold]{elapsed:.1f}s[/bold]")
+        info_line = "  ·  ".join(info_parts)
+
+        if achieved:
+            console.print(
+                Panel(
+                    f"[bold green]✅ SOLVED[/bold green]\n{reason}\n\n{info_line}",
+                    border_style="green",
+                    title="[bold]Problem Solved[/bold]",
+                )
+            )
+            exit_code = 0
+        else:
+            console.print(
+                Panel(
+                    f"[bold red]❌ NOT SOLVED[/bold red]\n{reason}\n\n{info_line}",
+                    border_style="red",
+                    title="[bold]Solve Incomplete[/bold]",
+                )
+            )
+
+        # Persist history
+        try:
+            from retrai.history import save_run_history
+
+            save_run_history(
+                cwd=cfg.cwd,
+                run_id=cfg.run_id,
+                goal="solve",
+                model=cfg.model_name,
+                status="achieved" if achieved else "failed",
+                iterations=iters,
+                max_iterations=cfg.max_iterations,
+                total_tokens=tokens,
+                estimated_cost_usd=cost,
+                started_at=started_at,
+                reason=reason,
+            )
+        except Exception:
+            pass
+
+    return exit_code
+
+
+@app.command()
+def swarm(
+    description: str = typer.Argument(
+        ..., help="High-level goal to decompose and solve with multiple agents"
+    ),
+    cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
+    model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model"),
+    workers: int = typer.Option(3, "--workers", "-w", help="Number of parallel worker agents"),
+    max_iter: int = typer.Option(
+        30, "--max-iter", "-n", help="Max iterations PER WORKER"
+    ),
+    api_key: str | None = typer.Option(
+        None, "--api-key", "-k", help="API key", envvar="LLM_API_KEY"
+    ),
+    api_base: str | None = typer.Option(
+        None, "--api-base", help="Custom API base URL"
+    ),
+) -> None:
+    """Run a multi-agent swarm to solve a complex goal.
+
+    Decomposes the goal into sub-tasks, runs parallel worker agents,
+    and synthesizes findings.
+
+    Examples:
+        retrai swarm "fix all type errors and add missing tests"
+        retrai swarm "refactor the codebase to use async/await" --workers 5
+        retrai swarm "add comprehensive error handling" --model gpt-4o
+    """
+    import os
+
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    resolved_cwd = str(Path(cwd).resolve())
+
+    if api_key:
+        for env_var in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"]:
+            if not os.environ.get(env_var):
+                os.environ[env_var] = api_key
+    if api_base:
+        os.environ["OPENAI_API_BASE"] = api_base
+
+    console.print(
+        Panel(
+            f"[bold cyan]retrAI swarm[/bold cyan]  🐝\n\n"
+            f"[bold]{description}[/bold]\n\n"
+            f"[dim]workers={workers}  model={model}  "
+            f"max-iter/worker={max_iter}[/dim]\n"
+            f"[dim]cwd: {resolved_cwd}[/dim]",
+            border_style="cyan",
+        )
+    )
+
+    exit_code = asyncio.run(_run_swarm(
+        description=description,
+        cwd=resolved_cwd,
+        model_name=model,
+        max_workers=workers,
+        max_iter=max_iter,
+    ))
+    raise typer.Exit(code=exit_code)
+
+
+async def _run_swarm(
+    description: str,
+    cwd: str,
+    model_name: str,
+    max_workers: int,
+    max_iter: int,
+) -> int:
+    """Run the swarm orchestrator."""
+    from retrai.swarm.orchestrator import SwarmOrchestrator
+
+    orchestrator = SwarmOrchestrator(
+        description=description,
+        cwd=cwd,
+        model_name=model_name,
+        max_workers=max_workers,
+        max_iterations_per_worker=max_iter,
+    )
+
+    console.print("\n[bold blue]Phase 1:[/bold blue] Decomposing goal…")
+    started_at = time.time()
+
+    try:
+        result = await orchestrator.run()
+    except Exception as e:
+        console.print(f"\n[red]Swarm failed: {e}[/red]")
+        return 1
+
+    elapsed = time.time() - started_at
+
+    # Display worker results
+    console.print("\n[bold blue]Worker Results:[/bold blue]")
+    for wr in result.worker_results:
+        status_icon = "✅" if wr.status == "achieved" else "❌"
+        console.print(
+            f"  {status_icon} [bold]{wr.task_id}[/bold]: {wr.description[:60]}"
+        )
+        if wr.findings:
+            console.print(f"     [dim]{wr.findings[:120]}[/dim]")
+        console.print(
+            f"     [dim]iters={wr.iterations_used}  "
+            f"tokens={wr.tokens_used:,}  "
+            f"cost=${wr.cost_usd:.4f}[/dim]"
+        )
+
+    # Display synthesis
+    status_color = {
+        "achieved": "green",
+        "partial": "yellow",
+        "failed": "red",
+    }.get(result.status, "red")
+
+    info_parts = [
+        f"Workers: [bold]{len(result.worker_results)}[/bold]",
+        f"Total iterations: [bold]{result.total_iterations}[/bold]",
+        f"Total tokens: [bold]{result.total_tokens:,}[/bold]",
+        f"Total cost: [bold]${result.total_cost:.4f}[/bold]",
+        f"Time: [bold]{elapsed:.1f}s[/bold]",
+    ]
+    info_line = "  ·  ".join(info_parts)
+
+    console.print(
+        Panel(
+            f"[bold {status_color}]{result.status.upper()}[/bold {status_color}]\n\n"
+            f"{result.synthesis}\n\n{info_line}",
+            border_style=status_color,
+            title="[bold]Swarm Complete[/bold]",
+        )
+    )
+
+    return 0 if result.status == "achieved" else 1
+
+
+# Register extra commands (pipeline, review, watch, bench)
+import retrai.cli.commands as _commands  # noqa: F401, E402

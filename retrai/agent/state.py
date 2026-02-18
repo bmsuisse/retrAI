@@ -41,3 +41,8 @@ class AgentState(TypedDict):
     run_id: str
     # Token usage tracking
     total_tokens: int
+    # Cost tracking
+    estimated_cost_usd: float
+    # Smart retry / reflection
+    failed_strategies: list[str]
+    consecutive_failures: int

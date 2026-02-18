@@ -21,6 +21,9 @@ def _make_state(**overrides) -> AgentState:
         "cwd": "/tmp",
         "run_id": "test-run",
         "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "failed_strategies": [],
+        "consecutive_failures": 0,
     }
     base.update(overrides)  # type: ignore[typeddict-unknown-key]
     return base

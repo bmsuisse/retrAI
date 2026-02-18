@@ -1,0 +1,384 @@
+/* ── retrAI TUI — Deep Purple Cyberpunk Theme ── */
+
+Screen {
+    background: #050b1f;
+    layers: base overlay;
+}
+
+/* ── Header / Footer ── */
+Header {
+    background: #0d0826;
+    color: #c084fc;
+    dock: top;
+}
+
+Footer {
+    background: #0d0826;
+    color: #64748b;
+}
+
+/* ── Logo Banner ── */
+#logo-banner {
+    width: 100%;
+    height: auto;
+    padding: 0 2;
+    background: #050b1f;
+    border-bottom: heavy #2e1065;
+}
+
+#logo-label {
+    width: auto;
+}
+
+/* ── Main Layout ── */
+#main-layout {
+    width: 100%;
+    height: 1fr;
+}
+
+/* ── Sidebar ── */
+#sidebar {
+    width: 38;
+    height: 100%;
+    border-right: heavy #2e1065;
+    background: #0a0620;
+    padding: 1 2;
+}
+
+/* ── Status Panel ── */
+#status-section {
+    width: 100%;
+    height: auto;
+    padding: 0 0 1 0;
+}
+
+#status-title {
+    color: #c084fc;
+    text-style: bold;
+    text-align: center;
+    margin-bottom: 1;
+}
+
+.info-row {
+    color: #64748b;
+    margin: 0;
+}
+
+.info-val {
+    color: #e2e8f0;
+}
+
+#status-badge {
+    text-align: center;
+    margin: 1 0;
+}
+
+/* ── Timer ── */
+#timer-label {
+    color: #38bdf8;
+    text-style: bold;
+    text-align: center;
+    margin-bottom: 1;
+}
+
+/* ── Progress Bar ── */
+#iteration-progress {
+    width: 100%;
+    margin: 0 0 1 0;
+}
+
+#iter-info {
+    color: #e2e8f0;
+    text-align: center;
+    margin-bottom: 0;
+}
+
+/* Custom progress styling */
+ProgressBar > Bar > .bar--bar {
+    color: #a78bfa;
+}
+
+ProgressBar > Bar > .bar--complete {
+    color: #4ade80;
+}
+
+ProgressBar > Bar > .bar--indeterminate {
+    color: #c084fc;
+}
+
+/* ── Sidebar Divider ── */
+.sidebar-divider {
+    border-top: heavy #2e1065;
+    height: 1;
+    margin: 1 0;
+}
+
+/* ── Tool Stats ── */
+#tool-stats-title {
+    color: #a78bfa;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.tool-stat-row {
+    color: #94a3b8;
+}
+
+/* ── Token Sparkline ── */
+#spark-title {
+    color: #a78bfa;
+    text-style: bold;
+    margin: 1 0 0 0;
+}
+
+#token-sparkline {
+    height: 3;
+    width: 100%;
+    margin: 0;
+}
+
+Sparkline {
+    height: 3;
+}
+
+/* ── Tabs ── */
+#content-area {
+    width: 1fr;
+    height: 100%;
+}
+
+TabbedContent {
+    height: 100%;
+}
+
+TabPane {
+    padding: 0;
+}
+
+ContentSwitcher {
+    height: 1fr;
+}
+
+Tabs {
+    background: #0d0826;
+    dock: top;
+}
+
+Tab {
+    color: #64748b;
+    background: #0d0826;
+    padding: 0 2;
+}
+
+Tab:hover {
+    color: #c084fc;
+    background: #1a1040;
+}
+
+Tab.-active {
+    color: #c084fc;
+    text-style: bold;
+    background: #050b1f;
+}
+
+Underline > .underline--bar {
+    color: #7c3aed;
+}
+
+/* ── Event Feed ── */
+#event-pane {
+    height: 100%;
+}
+
+#event-log {
+    height: 1fr;
+    padding: 0 1;
+    scrollbar-color: #2e1065;
+    scrollbar-color-hover: #7c3aed;
+    scrollbar-color-active: #a78bfa;
+}
+
+RichLog {
+    scrollbar-size-vertical: 1;
+    background: #050b1f;
+}
+
+/* ── Dashboard Tab ── */
+#dashboard-pane {
+    height: 100%;
+    padding: 1;
+}
+
+#dashboard-grid {
+    height: 100%;
+    layout: grid;
+    grid-size: 2;
+    grid-gutter: 1;
+}
+
+.dash-card {
+    border: round #2e1065;
+    background: #0a0620;
+    padding: 1 2;
+    height: 100%;
+}
+
+.dash-card-title {
+    color: #c084fc;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+/* ── Tool Table ── */
+#tool-table {
+    height: 1fr;
+}
+
+DataTable {
+    background: #0a0620;
+    height: 1fr;
+}
+
+DataTable > .datatable--header {
+    background: #1a1040;
+    color: #c084fc;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: #2e1065;
+    color: #e2e8f0;
+}
+
+DataTable > .datatable--even-row {
+    background: #0a0620;
+}
+
+DataTable > .datatable--odd-row {
+    background: #0d0826;
+}
+
+/* ── Iteration Timeline ── */
+#timeline-container {
+    height: auto;
+    padding: 1 2;
+    border: round #2e1065;
+    background: #0a0620;
+}
+
+#timeline-title {
+    color: #c084fc;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#timeline-markers {
+    color: #64748b;
+    height: auto;
+}
+
+/* ── Token Chart ── */
+#token-chart-container {
+    height: 100%;
+}
+
+#dash-sparkline {
+    height: 100%;
+}
+
+/* ── Files Tab ── */
+#files-pane {
+    height: 100%;
+    padding: 1;
+}
+
+#file-tree {
+    height: 1fr;
+    background: #050b1f;
+    scrollbar-color: #2e1065;
+    scrollbar-color-hover: #7c3aed;
+}
+
+Tree {
+    background: #050b1f;
+}
+
+Tree > .tree--cursor {
+    background: #2e1065;
+    color: #e2e8f0;
+}
+
+Tree > .tree--guides {
+    color: #2e1065;
+}
+
+Tree > .tree--guides-hover {
+    color: #7c3aed;
+}
+
+/* ── Help Tab ── */
+#help-pane {
+    height: 100%;
+    padding: 1 2;
+}
+
+#help-content {
+    height: 1fr;
+    background: #050b1f;
+    padding: 1 2;
+    scrollbar-color: #2e1065;
+}
+
+.help-section {
+    color: #c084fc;
+    text-style: bold;
+    margin: 1 0;
+}
+
+.help-key {
+    color: #38bdf8;
+    text-style: bold;
+}
+
+.help-desc {
+    color: #94a3b8;
+}
+
+/* ── Graph Screen ── */
+#graph-screen {
+    align: center middle;
+    background: rgba(5, 11, 31, 0.92);
+}
+
+#graph-container {
+    width: 70;
+    height: 30;
+    border: round #7c3aed;
+    background: #0a0620;
+    padding: 1 2;
+}
+
+#graph-title {
+    color: #c084fc;
+    text-style: bold;
+    text-align: center;
+    margin-bottom: 1;
+}
+
+#graph-art {
+    color: #e2e8f0;
+    text-align: center;
+}
+
+#graph-legend {
+    color: #64748b;
+    text-align: center;
+    margin-top: 1;
+}
+
+/* ── Toast Notifications ── */
+Toast {
+    background: #1a1040;
+    border: round #7c3aed;
+    color: #e2e8f0;
+}

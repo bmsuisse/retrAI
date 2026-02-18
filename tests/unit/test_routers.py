@@ -24,6 +24,9 @@ def _state(**overrides) -> AgentState:
         "cwd": "/tmp",
         "run_id": "test-run",
         "total_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "failed_strategies": [],
+        "consecutive_failures": 0,
     }
     base.update(overrides)  # type: ignore[typeddict-unknown-key]
     return base
@@ -57,7 +60,7 @@ def test_route_after_evaluate_max_iterations_reached():
 
 def test_route_after_evaluate_continue_no_hitl():
     state = _state(goal_achieved=False, iteration=3, max_iterations=10, hitl_enabled=False)
-    assert route_after_evaluate(state) == "plan"
+    assert route_after_evaluate(state) == "reflect"
 
 
 def test_route_after_evaluate_continue_with_hitl():
@@ -72,7 +75,7 @@ def test_route_after_evaluate_exactly_at_max():
 
 def test_route_after_evaluate_one_before_max():
     state = _state(goal_achieved=False, iteration=9, max_iterations=10, hitl_enabled=False)
-    assert route_after_evaluate(state) == "plan"
+    assert route_after_evaluate(state) == "reflect"
 
 
 # ── route_after_human_check ───────────────────────────────────────────────────
