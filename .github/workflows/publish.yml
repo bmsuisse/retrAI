@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
       fail-fast: false
 
     steps:
@@ -55,6 +55,18 @@ jobs:
         run: |
           uv sync --dev
           uv run pytest tests/ -x -q --tb=short
+
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Smoke-test wheel install
+        run: |
+          uv venv /tmp/smoke-test --python ${{ matrix.python-version }}
+          uv pip install --python /tmp/smoke-test/bin/python dist/*.whl
+          /tmp/smoke-test/bin/retrai --help
 
   publish-testpypi:
     name: Publish to TestPyPI

@@ -5,6 +5,9 @@ description = "Self-solving AI agent loop — run a goal, watch it fix itself"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
+authors = [
+    { name = "Dominik Peter" },
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -57,6 +60,7 @@ search = [
 [project.urls]
 Homepage = "https://github.com/bmsuisse/retrAI"
 Repository = "https://github.com/bmsuisse/retrAI"
+Documentation = "https://github.com/bmsuisse/retrAI#readme"
 Issues = "https://github.com/bmsuisse/retrAI/issues"
 
 [project.scripts]

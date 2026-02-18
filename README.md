@@ -22,12 +22,27 @@ It's like reinforcement learning for your codebase — goal-oriented, iterative,
 
 ---
 
+## Installation
+
+```bash
+# Recommended — isolated global CLI (like az, gh, ruff)
+pipx install retrai
+
+# Or with uv
+uv tool install retrai
+
+# Or with pip
+pip install retrai
+```
+
+> Requires Python 3.12+. `pipx` or `uv tool` install into an isolated virtualenv
+> so retrAI's dependencies never conflict with your project.
+
+---
+
 ## Quick Start
 
 ```bash
-# Install
-pip install retrai          # or: uv add retrai
-
 # Go to any project with failing tests
 cd /path/to/my-project
 
