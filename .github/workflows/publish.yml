@@ -24,7 +24,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
 
       - name: Build package
         run: uv build
@@ -58,7 +58,7 @@ jobs:
 
       - name: Install dependencies and run tests
         run: |
-          uv sync --dev
+          uv sync --extra dev
           uv run pytest tests/ -x -q --tb=short
 
       - name: Download dist artifacts
