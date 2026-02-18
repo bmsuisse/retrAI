@@ -351,15 +351,11 @@ def run(
         )
     )
 
+    from retrai.cli.runners import run_cli as _run_cli
+
     exit_code = asyncio.run(_run_cli(cfg))
     raise typer.Exit(code=exit_code)
 
-
-from retrai.cli.runners import (
-    run_cli as _run_cli,
-    run_solve as _run_solve,
-    run_swarm as _run_swarm,
-)
 
 
 @app.command()
@@ -753,6 +749,8 @@ def solve(
         hitl_enabled=False,
     )
 
+    from retrai.cli.runners import run_solve as _run_solve
+
     exit_code = asyncio.run(_run_solve(cfg, description))
     raise typer.Exit(code=exit_code)
 
@@ -813,6 +811,8 @@ def swarm(
             border_style="cyan",
         )
     )
+
+    from retrai.cli.runners import run_swarm as _run_swarm
 
     exit_code = asyncio.run(_run_swarm(
         description=description,

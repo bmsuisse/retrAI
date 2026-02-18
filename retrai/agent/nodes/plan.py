@@ -12,7 +12,6 @@ from langchain_core.runnables import RunnableConfig
 from retrai.agent.state import AgentState, ToolCall
 from retrai.events.types import AgentEvent
 from retrai.llm.factory import get_llm
-
 from retrai.tools.builtins import create_default_registry
 
 logger = logging.getLogger(__name__)

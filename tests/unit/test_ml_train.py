@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -15,7 +14,6 @@ from retrai.tools.ml_train import (
     _build_training_code,
     ml_train,
 )
-
 
 # ── ml_train validation ──────────────────────────────────────────────────────
 

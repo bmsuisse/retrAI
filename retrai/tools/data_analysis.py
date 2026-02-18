@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import textwrap
-from typing import Any
 
 from retrai.tools.python_exec import python_exec
 
@@ -93,7 +92,10 @@ def _build_summary_code(file_path: str) -> str:
             "columns": list(df.columns),
             "dtypes": {{col: str(dtype) for col, dtype in df.dtypes.items()}},
             "missing": {{col: int(v) for col, v in df.isnull().sum().items() if v > 0}},
-            "missing_pct": {{col: round(v / len(df) * 100, 1) for col, v in df.isnull().sum().items() if v > 0}},
+            "missing_pct": {{
+                col: round(v / len(df) * 100, 1)
+                for col, v in df.isnull().sum().items() if v > 0
+            }},
         }}
 
         # Numeric summary
@@ -181,7 +183,10 @@ def _build_quality_code(file_path: str) -> str:
             "memory_mb": round(df.memory_usage(deep=True).sum() / 1024 / 1024, 2),
             "duplicate_rows": int(df.duplicated().sum()),
             "complete_rows": int(df.dropna().shape[0]),
-            "completeness_pct": round(df.dropna().shape[0] / len(df) * 100, 1) if len(df) > 0 else 0,
+            "completeness_pct": (
+                round(df.dropna().shape[0] / len(df) * 100, 1)
+                if len(df) > 0 else 0
+            ),
         }}
 
         # Per-column quality
@@ -190,9 +195,15 @@ def _build_quality_code(file_path: str) -> str:
             info = {{
                 "dtype": str(df[col].dtype),
                 "missing": int(df[col].isnull().sum()),
-                "missing_pct": round(df[col].isnull().sum() / len(df) * 100, 1) if len(df) > 0 else 0,
+                "missing_pct": (
+                    round(df[col].isnull().sum() / len(df) * 100, 1)
+                    if len(df) > 0 else 0
+                ),
                 "unique": int(df[col].nunique()),
-                "unique_pct": round(df[col].nunique() / len(df) * 100, 1) if len(df) > 0 else 0,
+                "unique_pct": (
+                    round(df[col].nunique() / len(df) * 100, 1)
+                    if len(df) > 0 else 0
+                ),
             }}
             if df[col].dtype in ["float64", "int64"]:
                 info["zeros"] = int((df[col] == 0).sum())
@@ -240,12 +251,21 @@ def _build_distribution_code(file_path: str) -> str:
             col_info = {{"dtype": str(df[col].dtype)}}
 
             if df[col].dtype in ["float64", "int64"]:
-                col_info["min"] = float(df[col].min()) if not df[col].isnull().all() else None
-                col_info["max"] = float(df[col].max()) if not df[col].isnull().all() else None
-                col_info["mean"] = round(float(df[col].mean()), 4) if not df[col].isnull().all() else None
-                col_info["median"] = float(df[col].median()) if not df[col].isnull().all() else None
-                col_info["std"] = round(float(df[col].std()), 4) if not df[col].isnull().all() else None
-                col_info["skewness"] = round(float(df[col].skew()), 4) if not df[col].isnull().all() else None
+                not_null = not df[col].isnull().all()
+                col_info["min"] = float(df[col].min()) if not_null else None
+                col_info["max"] = float(df[col].max()) if not_null else None
+                col_info["mean"] = (
+                    round(float(df[col].mean()), 4) if not_null else None
+                )
+                col_info["median"] = (
+                    float(df[col].median()) if not_null else None
+                )
+                col_info["std"] = (
+                    round(float(df[col].std()), 4) if not_null else None
+                )
+                col_info["skewness"] = (
+                    round(float(df[col].skew()), 4) if not_null else None
+                )
 
                 # Histogram bins
                 try:

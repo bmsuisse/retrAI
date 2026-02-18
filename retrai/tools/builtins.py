@@ -14,7 +14,6 @@ from typing import Any
 
 from retrai.tools.base import BaseTool, ToolRegistry, ToolSchema
 
-
 # ──────────────────────────────────────────────────────────────────
 # Shell / Execution
 # ──────────────────────────────────────────────────────────────────

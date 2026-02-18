@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-import textwrap
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from retrai.tools.visualize import VALID_CHART_TYPES, _build_chart_code, visualize
-
 
 # ---------------------------------------------------------------------------
 # _build_chart_code tests

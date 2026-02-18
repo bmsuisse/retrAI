@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
 
 from retrai.swarm.decomposer import _parse_subtasks
 from retrai.swarm.roles import get_role
