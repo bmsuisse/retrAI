@@ -3,46 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-import json
 
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from retrai.agent.state import AgentState, ToolCall, ToolResult
 from retrai.events.types import AgentEvent
-from retrai.experiment.tracker import experiment_list, experiment_log
 from retrai.safety.guardrails import SafetyGuard, load_safety_config
-from retrai.tools.bash_exec import bash_exec
-from retrai.tools.data_analysis import data_analysis
-from retrai.tools.dataset_fetch import dataset_fetch
-from retrai.tools.file_patch import file_patch
-from retrai.tools.file_read import file_list, file_read
-from retrai.tools.file_write import file_write
-from retrai.tools.find_files import find_files
-from retrai.tools.git_diff import git_diff, git_log, git_status
-from retrai.tools.grep_search import grep_search
-from retrai.tools.hypothesis_test import hypothesis_test
-from retrai.tools.js_exec import js_exec
-from retrai.tools.pytest_runner import run_pytest
-from retrai.tools.python_exec import python_exec
-from retrai.tools.visualize import visualize
-from retrai.tools.web_search import web_search
+from retrai.tools.builtins import create_default_registry
 
-# Tools that are safe to run in parallel (read-only, no side effects)
-_PARALLEL_SAFE: frozenset[str] = frozenset({
-    "file_read",
-    "file_list",
-    "grep_search",
-    "find_files",
-    "git_status",
-    "git_log",
-    "git_diff",
-    "web_search",
-    "dataset_fetch",
-    "data_analysis",
-    "experiment_list",
-    "visualize",
-})
+# Module-level registry — created once, reused across invocations.
+_registry = create_default_registry()
+_PARALLEL_SAFE = _registry.parallel_safe_names()
 
 
 def _partition_tool_calls(
@@ -262,202 +234,6 @@ async def _execute_and_record(
 
 
 async def _dispatch(tool_name: str, args: dict, cwd: str) -> tuple[str, bool]:
-    """Dispatch a single tool call. Returns (content, is_error)."""
-    try:
-        if tool_name == "bash_exec":
-            result = await bash_exec(
-                command=args["command"],
-                cwd=cwd,
-                timeout=float(args.get("timeout", 60)),
-            )
-            if result.timed_out:
-                return "Command timed out", True
-            output = (
-                f"EXIT CODE: {result.returncode}\n"
-                f"STDOUT:\n{result.stdout}\n"
-                f"STDERR:\n{result.stderr}"
-            )
-            return output[:8000], False
+    """Dispatch a single tool call via the registry. Returns (content, is_error)."""
+    return await _registry.dispatch(tool_name, args, cwd)
 
-        elif tool_name == "file_read":
-            content = await file_read(args["path"], cwd)
-            return content, False
-
-        elif tool_name == "file_list":
-            path = args.get("path", ".")
-            entries = await file_list(path, cwd)
-            return "\n".join(entries), False
-
-        elif tool_name == "file_write":
-            written = await file_write(args["path"], args["content"], cwd)
-            return f"Written: {written}", False
-
-        elif tool_name == "run_pytest":
-            result = await asyncio.get_event_loop().run_in_executor(None, run_pytest, cwd)
-            summary = {
-                "exit_code": result.exit_code,
-                "passed": result.passed,
-                "failed": result.failed,
-                "error": result.error,
-                "total": result.total,
-            }
-            output = json.dumps(
-                {
-                    "summary": summary,
-                    "failures": result.failures[:10],
-                    "stdout": result.stdout[:3000],
-                },
-                indent=2,
-            )
-            return output, False
-
-        elif tool_name == "file_patch":
-            result_msg = await file_patch(
-                args["path"], args["old"], args["new"], cwd
-            )
-            return result_msg, False
-
-        elif tool_name == "web_search":
-            result = await web_search(
-                query=args["query"],
-                max_results=int(args.get("max_results", 5)),
-            )
-            return result[:8000], False
-
-        elif tool_name == "grep_search":
-            result = await grep_search(
-                pattern=args["pattern"],
-                cwd=cwd,
-                is_regex=bool(args.get("is_regex", False)),
-                case_insensitive=bool(args.get("case_insensitive", True)),
-                include_glob=args.get("include_glob"),
-            )
-            return result[:8000], False
-
-        elif tool_name == "find_files":
-            result = await find_files(
-                pattern=args["pattern"],
-                cwd=cwd,
-            )
-            return result[:8000], False
-
-        elif tool_name == "git_diff":
-            result = await git_diff(
-                cwd=cwd,
-                staged=bool(args.get("staged", False)),
-            )
-            return result[:8000], False
-
-        elif tool_name == "git_status":
-            result = await git_status(cwd=cwd)
-            return result[:4000], False
-
-        elif tool_name == "git_log":
-            result = await git_log(
-                cwd=cwd,
-                count=int(args.get("count", 10)),
-            )
-            return result[:4000], False
-
-        elif tool_name == "python_exec":
-            result = await python_exec(
-                code=args["code"],
-                cwd=cwd,
-                packages=args.get("packages"),
-                timeout=float(args.get("timeout", 30)),
-            )
-            if result.timed_out:
-                return "Python execution timed out", True
-            output = (
-                f"EXIT CODE: {result.returncode}\n"
-                f"STDOUT:\n{result.stdout}\n"
-                f"STDERR:\n{result.stderr}"
-            )
-            return output[:8000], False
-
-        elif tool_name == "js_exec":
-            result = await js_exec(
-                code=args["code"],
-                cwd=cwd,
-                packages=args.get("packages"),
-                timeout=float(args.get("timeout", 30)),
-            )
-            if result.timed_out:
-                return "JS execution timed out", True
-            output = (
-                f"EXIT CODE: {result.returncode}\n"
-                f"STDOUT:\n{result.stdout}\n"
-                f"STDERR:\n{result.stderr}"
-            )
-            return output[:8000], False
-
-        elif tool_name == "dataset_fetch":
-            result = await dataset_fetch(
-                source=args["source"],
-                query=args["query"],
-                max_results=int(args.get("max_results", 10)),
-                save_path=args.get("save_path"),
-                cwd=cwd,
-            )
-            return result[:8000], False
-
-        elif tool_name == "data_analysis":
-            result = await data_analysis(
-                file_path=args["file_path"],
-                cwd=cwd,
-                analysis_type=args.get("analysis_type", "summary"),
-            )
-            return result[:8000], False
-
-        elif tool_name == "experiment_log":
-            result = await experiment_log(
-                name=args["name"],
-                cwd=cwd,
-                hypothesis=args.get("hypothesis", ""),
-                parameters=args.get("parameters"),
-                metrics=args.get("metrics"),
-                result=args.get("result", ""),
-                notes=args.get("notes", ""),
-                tags=args.get("tags"),
-            )
-            return result[:8000], False
-
-        elif tool_name == "experiment_list":
-            result = await experiment_list(
-                cwd=cwd,
-                tag=args.get("tag"),
-                status=args.get("status"),
-                compare_ids=args.get("compare_ids"),
-            )
-            return result[:8000], False
-
-        elif tool_name == "hypothesis_test":
-            result = await hypothesis_test(
-                test_type=args["test_type"],
-                cwd=cwd,
-                data1=args.get("data1"),
-                data2=args.get("data2"),
-                data_file=args.get("data_file"),
-                column1=args.get("column1"),
-                column2=args.get("column2"),
-                alpha=float(args.get("alpha", 0.05)),
-            )
-            return result[:8000], False
-
-        elif tool_name == "visualize":
-            result = await visualize(
-                file_path=args["file_path"],
-                chart_type=args["chart_type"],
-                cwd=cwd,
-                x_column=args.get("x_column"),
-                y_column=args.get("y_column"),
-                title=args.get("title"),
-                output_path=args.get("output_path"),
-            )
-            return result[:8000], False
-
-        else:
-            return f"Unknown tool: {tool_name}", True
-
-    except Exception as e:
-        return f"Tool error: {type(e).__name__}: {e}", True

@@ -442,3 +442,130 @@ async def _run_benchmark(
         rounds=rounds,
     )
     return await runner.run()
+
+
+@app.command()
+def ml(
+    data: str = typer.Argument(
+        ...,
+        help="Path to dataset file (CSV/JSON/Excel/Parquet)",
+    ),
+    target: str = typer.Argument(
+        ...,
+        help="Target column name to predict",
+    ),
+    cwd: str = typer.Option(
+        ".", "--cwd", "-C", help="Project directory",
+    ),
+    model: str = typer.Option(
+        "claude-sonnet-4-6",
+        "--model", "-m",
+        help="LLM model for the agent",
+    ),
+    metric: str = typer.Option(
+        "auc",
+        "--metric",
+        help="Scoring metric: auc, f1, accuracy, r2, rmse, mae",
+    ),
+    target_value: float = typer.Option(
+        0.85,
+        "--target-value", "-t",
+        help="Target metric value to achieve",
+    ),
+    task_type: str | None = typer.Option(
+        None,
+        "--task-type",
+        help="classification or regression (auto-detected)",
+    ),
+    max_iter: int = typer.Option(
+        30, "--max-iter", "-n", help="Max iterations",
+    ),
+    api_key: str | None = typer.Option(
+        None,
+        "--api-key", "-k",
+        help="API key",
+        envvar="LLM_API_KEY",
+    ),
+    api_base: str | None = typer.Option(
+        None, "--api-base", help="Custom API base URL",
+    ),
+) -> None:
+    """Run iterative ML model optimization.
+
+    The agent trains sklearn/xgboost/lightgbm models, evaluates them,
+    and iterates to reach the target metric score.
+
+    Examples:
+        retrai ml data.csv churn --metric auc --target-value 0.90
+        retrai ml data.csv price --metric r2 --target-value 0.85
+    """
+    import os
+    from pathlib import Path
+
+    import yaml
+
+    if api_key:
+        os.environ["LLM_API_KEY"] = api_key
+    if api_base:
+        os.environ["LLM_API_BASE"] = api_base
+
+    # Write ML config to .retrai.yml
+    project_dir = Path(cwd).resolve()
+    config_path = project_dir / ".retrai.yml"
+    config: dict = {}
+    if config_path.exists():
+        try:
+            config = yaml.safe_load(config_path.read_text()) or {}
+        except Exception:
+            config = {}
+
+    config.update({
+        "goal": "ml-optimize",
+        "data_file": data,
+        "target_column": target,
+        "target_metric": metric,
+        "target_value": target_value,
+    })
+    if task_type:
+        config["task_type"] = task_type
+
+    config_path.write_text(yaml.dump(config, default_flow_style=False))
+
+    console.print(
+        Panel(
+            f"[bold]Dataset: {data}[/bold]\n"
+            f"Target: {target}  ·  Metric: {metric.upper()} "
+            f"≥ {target_value}\n"
+            f"Model: {model}  ·  Max iterations: {max_iter}",
+            title="[bold cyan]🧠 ML Optimization[/bold cyan]",
+            border_style="cyan",
+        )
+    )
+
+    result = asyncio.run(
+        _run_pipeline(
+            ["ml-optimize"], cwd, model, max_iter,
+            continue_on_error=False,
+        )
+    )
+
+    step = result.steps[0] if result.steps else None
+    if step and step.achieved:
+        console.print(
+            f"\n[bold green]🎯 Target reached![/bold green] "
+            f"{metric.upper()} ≥ {target_value}\n"
+            f"Iterations: {step.iterations_used}  ·  "
+            f"Tokens: {step.tokens_used:,}  ·  "
+            f"Cost: ${result.total_cost:.4f}"
+        )
+        raise typer.Exit(0)
+    else:
+        console.print(
+            f"\n[bold red]❌ Target not reached[/bold red] "
+            f"({metric.upper()} < {target_value})\n"
+            f"Iterations: {step.iterations_used if step else 0}  ·  "
+            f"Tokens: {result.total_tokens:,}  ·  "
+            f"Cost: ${result.total_cost:.4f}"
+        )
+        raise typer.Exit(1)
+

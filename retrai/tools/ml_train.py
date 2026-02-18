@@ -328,14 +328,20 @@ def _build_training_code(
             y = y[mask]
 
         # ── Train/test split ──
+        strat = y if task_type == "classification" else None
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size={test_size}, random_state=42, stratify=y if task_type == "classification" else None,
+            X, y, test_size={test_size}, random_state=42,
+            stratify=strat,
         )
 
         # ── Scale features ──
         scaler = StandardScaler()
-        X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-        X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
+        X_train_scaled = pd.DataFrame(
+            scaler.fit_transform(X_train), columns=X_train.columns,
+        )
+        X_test_scaled = pd.DataFrame(
+            scaler.transform(X_test), columns=X_test.columns,
+        )
 
         # ── Train model ──
         model = {cls_name}({hp_str})
@@ -346,26 +352,39 @@ def _build_training_code(
         y_pred = model.predict(X_test_scaled)
 
         if task_type == "classification":
-            metrics["accuracy"] = round(float(accuracy_score(y_test, y_pred)), 4)
+            metrics["accuracy"] = round(
+                float(accuracy_score(y_test, y_pred)), 4,
+            )
             n_classes = len(np.unique(y))
             avg = "binary" if n_classes == 2 else "weighted"
 
-            metrics["f1"] = round(float(f1_score(y_test, y_pred, average=avg, zero_division=0)), 4)
-            metrics["precision"] = round(float(precision_score(y_test, y_pred, average=avg, zero_division=0)), 4)
-            metrics["recall"] = round(float(recall_score(y_test, y_pred, average=avg, zero_division=0)), 4)
+            metrics["f1"] = round(float(
+                f1_score(y_test, y_pred, average=avg, zero_division=0),
+            ), 4)
+            metrics["precision"] = round(float(
+                precision_score(y_test, y_pred, average=avg, zero_division=0),
+            ), 4)
+            metrics["recall"] = round(float(
+                recall_score(y_test, y_pred, average=avg, zero_division=0),
+            ), 4)
 
             # AUC
             try:
                 if hasattr(model, "predict_proba"):
                     y_prob = model.predict_proba(X_test_scaled)
                     if n_classes == 2:
-                        metrics["auc"] = round(float(roc_auc_score(y_test, y_prob[:, 1])), 4)
+                        auc_val = roc_auc_score(y_test, y_prob[:, 1])
                     else:
-                        metrics["auc"] = round(float(roc_auc_score(y_test, y_prob, multi_class="ovr", average="weighted")), 4)
+                        auc_val = roc_auc_score(
+                            y_test, y_prob,
+                            multi_class="ovr", average="weighted",
+                        )
+                    metrics["auc"] = round(float(auc_val), 4)
                 elif hasattr(model, "decision_function"):
                     y_scores = model.decision_function(X_test_scaled)
                     if n_classes == 2:
-                        metrics["auc"] = round(float(roc_auc_score(y_test, y_scores)), 4)
+                        auc_val = roc_auc_score(y_test, y_scores)
+                        metrics["auc"] = round(float(auc_val), 4)
             except Exception:
                 metrics["auc"] = None
         else:
@@ -379,14 +398,23 @@ def _build_training_code(
         if {cross_validate!r}:
             try:
                 if task_type == "classification":
-                    scoring = "roc_auc" if {scoring_metric!r} == "auc" else {scoring_metric!r}
+                    sm = {scoring_metric!r}
+                    scoring = "roc_auc" if sm == "auc" else sm
                     if scoring == "roc_auc" and n_classes > 2:
                         scoring = "roc_auc_ovr_weighted"
                 else:
-                    score_map = {{"r2": "r2", "rmse": "neg_root_mean_squared_error", "mae": "neg_mean_absolute_error", "mse": "neg_mean_squared_error"}}
+                    score_map = {{
+                        "r2": "r2",
+                        "rmse": "neg_root_mean_squared_error",
+                        "mae": "neg_mean_absolute_error",
+                        "mse": "neg_mean_squared_error",
+                    }}
                     scoring = score_map.get({scoring_metric!r}, "r2")
 
-                scores = cross_val_score(model, X_train_scaled, y_train, cv={cv_folds}, scoring=scoring)
+                scores = cross_val_score(
+                    model, X_train_scaled, y_train,
+                    cv={cv_folds}, scoring=scoring,
+                )
                 cv_result = {{
                     "metric": {scoring_metric!r},
                     "mean": round(float(np.mean(scores)), 4),

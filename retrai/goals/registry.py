@@ -8,6 +8,7 @@ from retrai.goals.bun_goal import BunTestGoal
 from retrai.goals.cargo_goal import CargoTestGoal
 from retrai.goals.go_goal import GoTestGoal
 from retrai.goals.make_goal import MakeTestGoal
+from retrai.goals.ml_goal import MlOptimizeGoal
 from retrai.goals.npm_goal import NpmTestGoal
 from retrai.goals.perf_goal import PerfCheckGoal
 from retrai.goals.pyright_goal import PyrightGoal
@@ -28,6 +29,7 @@ _REGISTRY: dict[str, GoalBase] = {
     "perf-check": PerfCheckGoal(),
     "sql-benchmark": SqlBenchmarkGoal(),
     "ai-eval": AiEvalGoal(),
+    "ml-optimize": MlOptimizeGoal(),
     "research": ResearchGoal(),
 }
 
