@@ -301,16 +301,14 @@ class SafetyGuard:
             "LICENSE",
         }
         # Normalise: strip leading ./ and trailing /
-        normalised = path.lstrip("./").rstrip("/")
+        normalised = path.removeprefix("./").rstrip("/")
         basename = normalised.split("/")[-1] if "/" in normalised else normalised
 
         if normalised in critical_files or basename in critical_files:
             return [
                 SafetyViolation(
                     rule="critical_file_delete",
-                    description=(
-                        f"Attempted to delete critical project file: '{path}'"
-                    ),
+                    description=(f"Attempted to delete critical project file: '{path}'"),
                     risk_level=RiskLevel.HIGH,
                 )
             ]
