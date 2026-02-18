@@ -1,47 +1,53 @@
 # How It Works
 
-retrAI implements a **reinforcement-learning-inspired agent loop** using LangGraph. Instead of searching a state space, it uses a large language model to reason about what needs to change and takes targeted code-editing actions until the goal is verified as achieved.
+retrAI implements a **reinforcement-learning-inspired agent loop** using [LangGraph](https://langchain-ai.github.io/langgraph/). Instead of searching a state space, it uses a large language model to reason about what needs to change and takes targeted code-editing actions until the goal is verified as achieved.
 
 ---
 
 ## The Agent Loop
 
-```
-START
-  │
-  ▼
-[plan] ──── LLM decides what tools to call ────────────┐
-  │                                                     │
-  │ has tool calls?                                     │
-  ▼                                                     │
-[act] ─── executes bash, reads/writes files ───────────┤
-  │                                                     │
-  ▼                                                     │
-[evaluate] ── runs goal.check() ── goal achieved? ─── END
-  │                                                     │
-  │ not yet, iterations left?                           │
-  ├── hitl enabled? ── [human_check] ── approve? ──────┘
-  │                                      abort? ── END  │
-  │                                                     │
-  └──────────────────────────────── [plan] ◀────────────┘
+```mermaid
+graph TD
+    S([START]) --> plan
+    plan["🧠 Plan<br/><small>LLM decides next actions</small>"]
+    plan -->|has tool calls| act
+    plan -->|no tool calls| evaluate
+
+    act["⚡ Act<br/><small>Execute tools</small>"]
+    act --> evaluate
+
+    evaluate["🎯 Evaluate<br/><small>Run goal.check()</small>"]
+    evaluate -->|"✅ achieved"| E([END])
+    evaluate -->|"🛑 max iterations"| E
+    evaluate -->|"continue + HITL"| human_check
+    evaluate -->|"🔄 continue"| plan
+
+    human_check["👤 Human Check<br/><small>Approve or abort</small>"]
+    human_check -->|approve| plan
+    human_check -->|abort| E
+
+    style plan fill:#7c3aed,color:#fff
+    style act fill:#2563eb,color:#fff
+    style evaluate fill:#059669,color:#fff
+    style human_check fill:#d97706,color:#fff
 ```
 
 ### Nodes
 
 | Node | Responsibility |
 |---|---|
-| **plan** | Calls the LLM with the full conversation history. Extracts tool calls from the response. |
-| **act** | Executes each tool call (bash, file read/write). Appends results to the message history. |
-| **evaluate** | Calls `goal.check()`. Injects a status message into the conversation. Increments iteration counter. |
-| **human_check** | (HITL only) Interrupts graph execution. Waits for a human resume signal via the API. |
+| **plan** | Calls the LLM with the full conversation history. Extracts tool calls from the response. Injects the goal's system prompt. |
+| **act** | Executes each tool call (bash, file read/write, grep, etc.). Appends results to the message history. |
+| **evaluate** | Calls `goal.check()`. Injects a status message. Increments iteration counter. Tracks token usage. |
+| **human_check** | *(HITL only)* Interrupts graph execution via LangGraph's `interrupt()`. Waits for a human resume signal. |
 
-### Routing
+### Routing Logic
 
 After each node, a router function decides the next step:
 
-- **After plan**: has pending tool calls → `act`, otherwise → `evaluate`
-- **After evaluate**: goal achieved → `END`, max iterations reached → `END`, HITL enabled → `human_check`, else → `plan`
-- **After human_check**: approved → `plan`, aborted → `END`
+- **After plan** → has pending tool calls → `act`, otherwise → `evaluate`
+- **After evaluate** → goal achieved → `END`, max iterations → `END`, HITL → `human_check`, else → `plan`
+- **After human_check** → approved → `plan`, aborted → `END`
 
 ---
 
@@ -51,7 +57,7 @@ The entire agent state is a single `TypedDict` that flows through the graph:
 
 ```python
 class AgentState(TypedDict):
-    messages: Annotated[list[BaseMessage], add_messages]  # full LLM conversation
+    messages: Annotated[list[BaseMessage], add_messages]
     pending_tool_calls: list[ToolCall]
     tool_results: list[ToolResult]
     goal_achieved: bool
@@ -62,32 +68,43 @@ class AgentState(TypedDict):
     model_name: str
     cwd: str
     run_id: str
+    total_tokens: int
+    estimated_cost_usd: float
+    failed_strategies: list[str]
+    consecutive_failures: int
 ```
 
 Two things are injected via LangGraph's `config["configurable"]` (not stored in state):
-- **`goal`**: the `GoalBase` instance, used by the `evaluate` node
-- **`event_bus`**: the `AsyncEventBus`, used by all nodes to emit events
+
+- **`goal`** — the `GoalBase` instance, used by the `evaluate` node
+- **`event_bus`** — the `AsyncEventBus`, used by all nodes to emit events
 
 ---
 
-## Goals
+## Tools Available to the Agent
 
-Every goal implements the `GoalBase` abstract class:
+The agent has a rich set of tools for code manipulation:
 
-```python
-class GoalBase(ABC):
-    @abstractmethod
-    async def check(self, state: dict, cwd: str) -> GoalResult:
-        """Run the check and return achieved=True/False + reason."""
-        ...
+| Tool | Description |
+|---|---|
+| `bash_exec` | Run any shell command with configurable timeout |
+| `file_read` | Read file contents |
+| `file_write` | Write/overwrite files, creating directories as needed |
+| `file_patch` | Apply targeted patches to files |
+| `grep_search` | Search for patterns across files |
+| `find_files` | List files matching a pattern |
+| `git_diff` | Show unstaged changes |
+| `run_pytest` | Run pytest with structured JSON report |
+| `python_exec` | Execute Python code in a sandbox |
+| `js_exec` | Execute JavaScript/TypeScript via Bun |
+| `ml_train` | Train ML models in a sandbox |
+| `sql_bench` | Benchmark SQL queries |
+| `web_search` | Search the web for documentation |
+| `visualize` | Generate charts and plots |
+| `hypothesis_test` | Run statistical hypothesis tests |
 
-    @abstractmethod
-    def system_prompt(self) -> str:
-        """Instructions prepended to the LLM conversation."""
-        ...
-```
-
-The `evaluate` node calls `goal.check()` to determine if the work is done. The `plan` node calls `goal.system_prompt()` to inject goal-specific instructions at the start of the conversation.
+!!! tip "Auto-context injection"
+    On the first iteration, the agent automatically reads key project files (`pyproject.toml`, `package.json`, etc.) to build context before making changes.
 
 ---
 
@@ -95,59 +112,48 @@ The `evaluate` node calls `goal.check()` to determine if the work is done. The `
 
 Every agent action publishes a structured `AgentEvent`:
 
-```python
-@dataclass
-class AgentEvent:
-    kind: EventKind      # step_start | tool_call | tool_result | goal_check |
-                         # human_check_required | iteration_complete | run_end | error
-    run_id: str
-    iteration: int
-    ts: float
-    payload: dict
+```mermaid
+graph LR
+    E[AgentEvent] --> WS["🌐 WebSocket"]
+    E --> TUI["📟 TUI"]
+    E --> CLI["💻 CLI Logger"]
+
+    style E fill:#7c3aed,color:#fff
 ```
 
-The `AsyncEventBus` uses per-subscriber `asyncio.Queue` objects for fan-out:
-
-```
-event_bus.publish(event)
-    │
-    ├──▶ WebSocket route queue  ──▶ browser
-    ├──▶ TUI consumer queue     ──▶ Textual app
-    └──▶ CLI consumer queue     ──▶ terminal
-```
-
----
-
-## LangGraph + LiteLLM
-
-- **LangGraph**: Provides the `StateGraph` with cycles, `MemorySaver` checkpointing, and the `interrupt()` primitive for HITL.
-- **LiteLLM**: Provides a unified interface to Claude, GPT-4, Gemini, Ollama, etc. via `ChatLiteLLM` from `langchain_community`.
-
-The LLM is configured per-run via `model_name` in the state. `get_llm()` is cached with `lru_cache` so the same model name always returns the same object.
-
----
-
-## Tools Available to the Agent
-
-| Tool | What it does |
+| Event Kind | When Emitted |
 |---|---|
-| `bash_exec` | Run any shell command in the project directory with a configurable timeout |
-| `file_read` | Read a file (path relative to project root) |
-| `file_list` | List directory contents |
-| `file_write` | Write/overwrite a file, creating parent directories as needed |
-| `run_pytest` | Run pytest with JSON report and return structured failure data |
+| `step_start` | A graph node begins execution |
+| `tool_call` | The LLM requests a tool |
+| `tool_result` | A tool execution completes |
+| `llm_usage` | Token usage from an LLM call |
+| `goal_check` | Goal evaluated |
+| `human_check_required` | HITL gate reached |
+| `iteration_complete` | Full iteration done |
+| `run_end` | Run finished (achieved/failed) |
 
-The agent always starts by listing files and reading key config files (pyproject.toml, package.json, etc.) to build context before making any changes.
+The `AsyncEventBus` uses per-subscriber `asyncio.Queue` objects for concurrent fan-out to all consumers.
 
 ---
 
-## Message History Management
+## Agent Memory
 
-The conversation history grows with each iteration. To prevent unbounded context:
+retrAI can persist **learned strategies** across runs. After each successful run, the agent extracts what worked:
 
-- Messages are trimmed to the most recent 40 entries before each LLM call
-- The first message (system prompt) is always preserved
-- Tool results are included in the history so the LLM understands what happened
+```python
+# Stored in .retrai/memory.json
+{
+  "strategies": [
+    {
+      "goal": "pytest",
+      "pattern": "When tests fail due to missing imports, check __init__.py",
+      "success_count": 3
+    }
+  ]
+}
+```
+
+On subsequent runs, high-confidence strategies are injected into the system prompt so the agent doesn't repeat mistakes.
 
 ---
 

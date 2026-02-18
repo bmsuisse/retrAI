@@ -1,61 +1,162 @@
 # Architecture
 
-## Agent Loop
+## High-Level Overview
+
+```mermaid
+graph TB
+    subgraph CLI["CLI / TUI"]
+        cli["retrai run"]
+        tui["retrai tui"]
+    end
+
+    subgraph Server["Web Server"]
+        api["FastAPI"]
+        ws["WebSocket"]
+        vue["Vue 3 Frontend"]
+    end
+
+    subgraph Core["Agent Core"]
+        graph["LangGraph StateGraph"]
+        plan["Plan Node"]
+        act["Act Node"]
+        eval["Evaluate Node"]
+        hitl["Human Check"]
+    end
+
+    subgraph Infra["Infrastructure"]
+        bus["AsyncEventBus"]
+        llm["LiteLLM"]
+        tools["Tool Registry"]
+        goals["Goal Registry"]
+        mem["Agent Memory"]
+    end
+
+    cli --> graph
+    tui --> graph
+    api --> graph
+    graph --> plan
+    plan --> act
+    act --> eval
+    eval --> hitl
+    plan --> llm
+    act --> tools
+    eval --> goals
+    graph --> bus
+    bus --> ws
+    bus --> tui
+    bus --> cli
+    graph --> mem
+
+    style graph fill:#7c3aed,color:#fff
+    style bus fill:#2563eb,color:#fff
+    style llm fill:#059669,color:#fff
+```
+
+## Package Structure
 
 ```
-START → [plan] → (has tool calls?) → [act] → [evaluate] → (goal achieved?) → END
-               ↘ (no tool calls)  ↗           ↓ (continue)
-                            [evaluate]    (hitl?) → [human_check] → (approve?) → [plan]
-                                                                   → (abort) → END
-                                             ↓ (no hitl)
-                                           [plan]
+retrai/
+├── agent/              # LangGraph agent
+│   ├── graph.py        # StateGraph definition
+│   ├── state.py        # AgentState TypedDict
+│   ├── routers.py      # Edge routing logic
+│   └── nodes/          # Graph nodes
+│       ├── plan.py     # LLM reasoning
+│       ├── act.py      # Tool execution
+│       ├── evaluate.py # Goal checking
+│       ├── reflect.py  # Strategy extraction
+│       └── human_check.py
+├── cli/                # Typer CLI
+│   ├── app.py          # Commands
+│   ├── commands.py     # Subcommands
+│   └── runners.py      # Run orchestration
+├── events/             # Event system
+│   ├── bus.py          # AsyncEventBus
+│   └── types.py        # AgentEvent dataclass
+├── goals/              # Goal definitions
+│   ├── base.py         # GoalBase ABC
+│   ├── registry.py     # Goal registry
+│   ├── detector.py     # Auto-detection
+│   ├── pytest_goal.py
+│   ├── pyright_goal.py
+│   ├── bun_goal.py
+│   ├── sql_goal.py
+│   ├── perf_goal.py
+│   ├── ml_goal.py
+│   ├── ai_eval.py
+│   └── ...
+├── llm/                # LLM integration
+│   └── factory.py      # get_llm() → ChatLiteLLM
+├── memory/             # Persistent memory
+│   ├── store.py        # JSON-based store
+│   └── extractor.py    # Strategy extraction
+├── tools/              # Agent tools
+│   ├── base.py         # BaseTool ABC
+│   ├── builtins.py     # Tool registry
+│   ├── bash_exec.py
+│   ├── file_read.py
+│   ├── file_write.py
+│   ├── grep_search.py
+│   └── ...
+├── server/             # FastAPI server
+│   ├── app.py          # ASGI app
+│   ├── run_manager.py  # Run lifecycle
+│   └── routes/
+│       ├── runs.py     # REST endpoints
+│       └── ws.py       # WebSocket
+├── tui/                # Textual TUI
+│   ├── app.py          # Main app
+│   ├── widgets.py      # Custom widgets
+│   ├── screens.py      # Modal screens
+│   ├── wizard.py       # Setup wizard
+│   └── styles.tcss     # Stylesheet
+├── swarm/              # Multi-agent orchestration
+│   ├── orchestrator.py
+│   ├── worker.py
+│   ├── roles.py
+│   └── decomposer.py
+├── benchmark.py        # Model comparison
+├── watcher.py          # File watcher
+├── pipeline/           # Pipeline mode
+├── review.py           # Code review
+├── history.py          # Run history
+├── config.py           # RunConfig
+└── safety/             # Guardrails
+    └── guardrails.py
 ```
 
-## Components
+## Key Design Decisions
 
-| Component | File | Role |
-|---|---|---|
-| `config.py` | `retrai/config.py` | `RunConfig` dataclass |
-| Event bus | `retrai/events/bus.py` | Async fan-out to WS + TUI + log |
-| LLM factory | `retrai/llm/factory.py` | LiteLLM → LangChain model |
-| Goals | `retrai/goals/` | `GoalBase` ABC + registry |
-| Tools | `retrai/tools/` | bash, file_read, file_write, pytest |
-| Agent graph | `retrai/agent/graph.py` | LangGraph `StateGraph` |
-| Server | `retrai/server/app.py` | FastAPI + WebSocket |
-| CLI | `retrai/cli/app.py` | Typer commands |
-| TUI | `retrai/tui/app.py` | Textual app |
-| Frontend | `frontend/` | Vue 3 + Vue Flow + Pinia |
+### LangGraph StateGraph
 
-## Event System
+The agent is a **cyclic graph** with conditional edges, not a linear pipeline. This means:
 
-Every agent action emits a structured `AgentEvent` with a `kind` field:
+- The agent can loop as many times as needed
+- Routing is determined at runtime by the state
+- HITL interrupts are first-class via `interrupt()`
+- State is checkpointed automatically via `MemorySaver`
 
-```
-step_start → tool_call → tool_result → goal_check → iteration_complete
-                                                   ↓
-                                     human_check_required (HITL only)
-                                                   ↓
-                                         run_end / error
-```
+### LiteLLM for Multi-Model
 
-The `AsyncEventBus` fans out to all subscribers via `asyncio.Queue`. Both the
-WebSocket route and the TUI subscribe simultaneously.
+Instead of binding to one provider, retrAI uses [LiteLLM](https://docs.litellm.ai) which provides a unified interface to 100+ LLM providers. Switching models is a single CLI flag.
 
-## LangGraph State
+### Event-Driven Architecture
+
+All agent activity flows through the `AsyncEventBus` — a pub/sub system using `asyncio.Queue` per subscriber. This decouples the agent from its consumers (CLI, TUI, WebSocket) and allows multiple frontends to observe the same run simultaneously.
+
+### Tool Registry
+
+Tools are registered via a decorator pattern:
 
 ```python
-class AgentState(TypedDict):
-    messages: Annotated[list, add_messages]  # full conversation history
-    pending_tool_calls: list[ToolCall]
-    tool_results: list[ToolResult]
-    goal_achieved: bool
-    goal_reason: str
-    iteration: int
-    max_iterations: int
-    hitl_enabled: bool
-    model_name: str
-    cwd: str
-    run_id: str
+from retrai.tools.base import BaseTool
+
+class MyTool(BaseTool):
+    name = "my_tool"
+    description = "Does something useful"
+
+    async def execute(self, **kwargs) -> str:
+        return "result"
 ```
 
-The `goal` object and `event_bus` are injected via `config["configurable"]`, not stored in state.
+The registry is extensible via Python entry points for plugin discovery.

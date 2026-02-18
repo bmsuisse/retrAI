@@ -31,7 +31,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Install doc dependencies
-        run: uv sync --group docs
+        run: uv sync --extra docs
 
       - name: Build docs
         run: uv run mkdocs build --strict

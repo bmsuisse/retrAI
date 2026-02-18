@@ -10,6 +10,11 @@
   self-solving AI agent loop
 ```
 
+[![PyPI](https://img.shields.io/pypi/v/retrai?color=7c3aed)](https://pypi.org/project/retrai/)
+[![Python](https://img.shields.io/pypi/pyversions/retrai)](https://pypi.org/project/retrai/)
+[![License](https://img.shields.io/github/license/bmsuisse/retrAI)](https://github.com/bmsuisse/retrAI/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-bmsuisse.github.io%2FretrAI-7c3aed)](https://bmsuisse.github.io/retrAI)
+
 **`cd` into any project. Run `retrai run`. Watch it fix itself.**
 
 retrAI is an autonomous AI agent that:
@@ -283,7 +288,7 @@ retrai/
 
 ```bash
 # Clone and install
-git clone https://github.com/dominikpeter/retrAI
+git clone https://github.com/bmsuisse/retrAI
 cd retrAI
 uv sync --dev
 

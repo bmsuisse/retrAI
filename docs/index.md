@@ -2,43 +2,71 @@
   <h1>retrAI</h1>
   <p>A self-solving AI agent loop. Point it at any project, give it a goal, watch it fix itself.</p>
   <span class="badge">pytest</span>
-  <span class="badge">sql-benchmark</span>
+  <span class="badge">pyright</span>
   <span class="badge">perf-check</span>
+  <span class="badge">sql-benchmark</span>
   <span class="badge">shell-goal</span>
+  <span class="badge">ai-eval</span>
+  <span class="badge">ml-optimize</span>
+  <span class="badge">cargo-test</span>
+  <span class="badge">bun-test</span>
+  <span class="badge">go-test</span>
 </div>
 
 ## What is retrAI?
 
-retrAI is an autonomous AI agent that runs a **goal loop**:
+retrAI is an autonomous AI agent that runs a **plan → act → evaluate → repeat** loop powered by [LangGraph](https://langchain-ai.github.io/langgraph/) and [LiteLLM](https://docs.litellm.ai). Give it a goal — failing tests, a slow query, a type error — and it will iteratively fix your code until the goal is achieved.
 
-1. **Plan** — ask the LLM what to do next
-2. **Act** — execute tool calls (read files, run commands, write code)
-3. **Evaluate** — check if the goal is achieved
-4. **Repeat** — until success or max iterations
+```mermaid
+graph LR
+    A[START] --> B[Plan]
+    B --> C[Act]
+    C --> D[Evaluate]
+    D -->|"✅ Goal achieved"| E[END]
+    D -->|"🔄 Continue"| B
+    D -->|"🛑 Max iterations"| E
+```
+
+## Install
 
 ```bash
-cd /my/project
-retrai run pytest              # fix all failing tests
-retrai run perf-check          # optimise until benchmarks pass
-retrai run sql-benchmark       # tune a query until it's fast enough
-retrai run shell-goal          # any custom shell-based goal
+pip install retrai          # or: uv add retrai
+```
+
+## Use
+
+```bash
+retrai run pytest           # fix all failing tests
+retrai run pyright          # fix type errors
+retrai run perf-check       # optimise until benchmarks pass
+retrai run sql-benchmark    # tune a query until it's fast
+retrai run ai-eval          # describe a goal in English, agent writes tests + code
+retrai serve                # web dashboard on :8000
+retrai tui pytest           # rich terminal UI
 ```
 
 ## Key Features
 
-| Feature | Detail |
+| Feature | Description |
 |---|---|
-| **Generic goals** | pytest, perf-check, sql-benchmark, shell-goal, or custom YAML |
-| **Multi-model** | Claude, GPT-4o, Gemini — anything LiteLLM supports |
-| **Live dashboard** | Vue 3 + Vue Flow graph + WebSocket event stream |
-| **Textual TUI** | Rich terminal UI with gradient logo |
-| **HITL** | Human-in-the-loop approval gates |
-| **FastAPI server** | REST + WebSocket, embeddable in any pipeline |
+| :material-target: **12 goal types** | pytest, pyright, bun-test, npm-test, cargo-test, go-test, make-test, shell-goal, perf-check, sql-benchmark, ai-eval, ml-optimize |
+| :material-robot: **Multi-model** | Claude, GPT-4o, Gemini, Ollama, DeepSeek — anything [LiteLLM](https://docs.litellm.ai) supports |
+| :material-auto-fix: **Auto-detection** | Scans project files to pick the right goal automatically |
+| :material-monitor-dashboard: **Web dashboard** | Vue 3 + WebSocket real-time graph visualization |
+| :material-console: **TUI** | Rich Textual terminal with live sparklines, tool tree, and event log |
+| :material-account-check: **HITL** | Optional human-in-the-loop approval gates before each iteration |
+| :material-memory: **Agent memory** | Persists learned strategies across runs |
+| :material-pipe: **Pipeline mode** | Chain multiple goals in sequence |
+| :material-chart-bar: **Benchmarks** | Compare models side-by-side on the same task |
+| :material-magnify: **AI eval** | Describe a goal in English — agent generates the test harness, then implements the solution |
 
-## Quick Start
+## Quick Links
 
-```bash
-pip install retrai          # or: uv add retrai
-retrai run pytest           # uses current directory
-retrai serve                # start web dashboard on :8000
-```
+<div class="grid cards" markdown>
+
+- :material-download: [**Installation**](getting-started/installation.md) — Get up and running in 60 seconds
+- :material-rocket-launch: [**Quick Start**](getting-started/quickstart.md) — Fix your first failing test
+- :material-cog: [**How It Works**](how-it-works.md) — The agent loop explained
+- :material-api: [**API Reference**](api.md) — REST + WebSocket endpoints
+
+</div>
