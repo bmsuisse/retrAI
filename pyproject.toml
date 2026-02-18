@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Self-solving AI agent loop — run a goal, watch it fix itself"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 authors = [
     { name = "Dominik Peter" },
@@ -25,6 +26,7 @@ dependencies = [
     "langgraph>=0.5.0",
     "langchain-core>=0.3.0",
     "langchain-community>=0.3.0",
+    "langchain-litellm>=0.2.0",
     "litellm>=1.50.0",
     "typer>=0.15.0",
     "textual>=1.0.0",
@@ -42,7 +44,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
-    "pytest-asyncio>=0.24.0",
+    "pytest-asyncio>=0.24.0,<1.0.0",
     "httpx>=0.27.0",
     "ruff>=0.7.0",
     "mypy>=1.13.0",
@@ -55,6 +57,10 @@ docs = [
 ]
 search = [
     "duckduckgo-search>=7.0.0",
+]
+sql = [
+    "databricks-sql-connector>=3.0.0",
+    "sqlalchemy>=2.0.0",
 ]
 
 [project.urls]

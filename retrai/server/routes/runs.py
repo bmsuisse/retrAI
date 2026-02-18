@@ -89,3 +89,43 @@ async def resume_run(run_id: str, req: ResumeRunRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"run_id": run_id, "resumed_with": req.decision}
+
+
+@router.post("/{run_id}/abort")
+async def abort_run(run_id: str):
+    entry = run_manager.get(run_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Run not found")
+    try:
+        await run_manager.abort_run(run_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"run_id": run_id, "status": "aborted"}
+
+
+class PatchConfigRequest(BaseModel):
+    max_iterations: int | None = None
+    model_name: str | None = None
+    hitl_enabled: bool | None = None
+
+
+@router.patch("/{run_id}/config")
+async def patch_config(run_id: str, req: PatchConfigRequest):
+    entry = run_manager.get(run_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Run not found")
+    try:
+        run_manager.update_config(
+            run_id,
+            max_iterations=req.max_iterations,
+            model_name=req.model_name,
+            hitl_enabled=req.hitl_enabled,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {
+        "run_id": run_id,
+        "max_iterations": entry.config.max_iterations,
+        "model_name": entry.config.model_name,
+        "hitl_enabled": entry.config.hitl_enabled,
+    }

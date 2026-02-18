@@ -25,10 +25,26 @@ async def run_worker(
     from retrai.agent.graph import build_graph
     from retrai.events.bus import AsyncEventBus
     from retrai.goals.solver import SolverGoal
+    from retrai.swarm.roles import get_role
 
     goal = SolverGoal(description=subtask.description)
     bus = AsyncEventBus()
     graph = build_graph(hitl_enabled=False)
+
+    # Build role-specific context if a role is assigned
+    role_prompt = ""
+    if subtask.role:
+        role = get_role(subtask.role)
+        if role:
+            role_prompt = (
+                f"\n\n## YOUR ROLE: {role.name.upper()}\n"
+                f"{role.system_prompt}\n"
+                f"Preferred tools: {', '.join(role.preferred_tools)}\n"
+            )
+            logger.info(
+                "Worker %s using role '%s'",
+                subtask.id, role.name,
+            )
 
     initial_state = {
         "messages": [],
@@ -53,6 +69,7 @@ async def run_worker(
             "thread_id": f"swarm-{subtask.id}",
             "event_bus": bus,
             "goal": goal,
+            "role_prompt": role_prompt,
         }
     }
 

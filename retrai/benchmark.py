@@ -8,7 +8,9 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from langchain_core.runnables import RunnableConfig
 
 logger = logging.getLogger(__name__)
 
@@ -193,11 +195,13 @@ class BenchmarkRunner:
                 }
             }
 
-            async for _ in graph.astream(initial_state, config=config):
+            async for _ in graph.astream(
+                cast(Any, initial_state), config=cast(RunnableConfig, config)
+            ):
                 pass
 
             # Get final state
-            snapshot = graph.get_state(config)
+            snapshot = graph.get_state(cast(RunnableConfig, config))
             achieved = False
             iterations = 0
             tokens = 0

@@ -1,0 +1,4 @@
+goal: perf-check
+check_command: "python bench.py"
+max_seconds: 0.5
+iterations: 3

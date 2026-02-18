@@ -2,23 +2,27 @@ import { ref, onUnmounted } from 'vue'
 import { useRunStore } from '@/stores/runStore'
 import { useEventStore } from '@/stores/eventStore'
 
+export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error'
+
 export function useWebSocket(runId: string) {
   const runStore = useRunStore()
   const eventStore = useEventStore()
-  const connected = ref(false)
-  const error = ref<string | null>(null)
+  const connectionState = ref<ConnectionState>('disconnected')
   let ws: WebSocket | null = null
+  let reconnectAttempts = 0
+  const maxReconnectAttempts = 5
 
   function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     const url = `${protocol}//${host}/api/ws/${runId}`
 
+    connectionState.value = 'connecting'
     ws = new WebSocket(url)
 
     ws.onopen = () => {
-      connected.value = true
-      error.value = null
+      connectionState.value = 'connected'
+      reconnectAttempts = 0
     }
 
     ws.onmessage = (evt) => {
@@ -37,7 +41,6 @@ export function useWebSocket(runId: string) {
         ts: number
       }
 
-      // Dispatch to event store
       eventStore.addEvent({
         kind: event.kind as never,
         run_id: event.run_id,
@@ -46,17 +49,23 @@ export function useWebSocket(runId: string) {
         ts: event.ts,
       })
 
-      // Update run store based on event kind
       handleEvent(event)
     }
 
     ws.onerror = () => {
-      error.value = 'WebSocket error'
-      connected.value = false
+      connectionState.value = 'error'
     }
 
     ws.onclose = () => {
-      connected.value = false
+      connectionState.value = 'disconnected'
+      if (
+        runStore.isRunning &&
+        reconnectAttempts < maxReconnectAttempts
+      ) {
+        reconnectAttempts++
+        const delay = Math.min(1000 * 2 ** reconnectAttempts, 16000)
+        setTimeout(connect, delay)
+      }
     }
   }
 
@@ -80,11 +89,15 @@ export function useWebSocket(runId: string) {
     } else if (kind === 'run_end') {
       const status = payload.status as string
       const reason = payload.reason as string
-      runStore.updateStatus(
-        runId,
-        status === 'achieved' ? 'achieved' : 'failed',
-        reason,
-      )
+      if (status === 'aborted') {
+        runStore.updateStatus(runId, 'aborted', reason)
+      } else {
+        runStore.updateStatus(
+          runId,
+          status === 'achieved' ? 'achieved' : 'failed',
+          reason,
+        )
+      }
       runStore.setAwaitingHuman(false)
     } else if (kind === 'error') {
       runStore.updateStatus(runId, 'failed', payload.error as string)
@@ -92,11 +105,12 @@ export function useWebSocket(runId: string) {
   }
 
   function disconnect() {
+    reconnectAttempts = maxReconnectAttempts
     ws?.close()
     ws = null
   }
 
   onUnmounted(disconnect)
 
-  return { connected, error, connect, disconnect }
+  return { connectionState, connect, disconnect }
 }

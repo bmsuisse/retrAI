@@ -7,28 +7,46 @@ const runStore = useRunStore()
 const eventStore = useEventStore()
 
 const run = computed(() => runStore.activeRun)
+const isRunning = computed(() => runStore.isRunning)
 
-const statusConfig = computed(() => {
-  const status = run.value?.status ?? 'idle'
+function statusLabel(s: string | undefined): string {
   return {
-    idle: { label: 'IDLE', color: '#64748b', glow: 'none' },
-    running: { label: 'RUNNING', color: '#a78bfa', glow: '0 0 12px #7c3aed88' },
-    achieved: { label: 'ACHIEVED', color: '#4ade80', glow: '0 0 12px #22c55e88' },
-    failed: { label: 'FAILED', color: '#f87171', glow: '0 0 12px #ef444488' },
-    aborted: { label: 'ABORTED', color: '#fbbf24', glow: '0 0 12px #f59e0b88' },
-  }[status]
-})
+    idle: '○ IDLE',
+    running: '◉ RUNNING',
+    achieved: '✓ ACHIEVED',
+    failed: '✗ FAILED',
+    aborted: '⏹ ABORTED',
+  }[s ?? 'idle'] ?? '○ IDLE'
+}
 
-const progress = computed(() => {
+function statusColor(s: string | undefined): string {
+  return {
+    idle: '#64748b',
+    running: '#a78bfa',
+    achieved: '#4ade80',
+    failed: '#f87171',
+    aborted: '#fbbf24',
+  }[s ?? 'idle'] ?? '#64748b'
+}
+
+const progressAngle = computed(() => {
   if (!run.value) return 0
-  return Math.round((run.value.iteration / run.value.maxIterations) * 100)
+  const pct = run.value.maxIterations > 0
+    ? run.value.iteration / run.value.maxIterations
+    : 0
+  return Math.min(pct, 1) * 360
 })
 
 const totalTokens = computed(() => {
-  if (!run.value) return 0
-  return eventStore.events
-    .filter((e) => e.run_id === run.value!.runId && e.kind === 'llm_usage')
-    .reduce((sum, e) => sum + ((e.payload.total_tokens as number) || 0), 0)
+  const runId = run.value?.runId
+  if (!runId) return 0
+  let total = 0
+  for (const e of eventStore.llmUsageEvents) {
+    if (e.run_id === runId) {
+      total += (e.payload.total_tokens as number) || 0
+    }
+  }
+  return total
 })
 
 function formatTokens(n: number): string {
@@ -40,140 +58,177 @@ function formatTokens(n: number): string {
 
 <template>
   <div class="goal-status">
-    <div class="status-row">
-      <div class="badge" :style="{ color: statusConfig?.color, boxShadow: statusConfig?.glow }">
-        <span class="dot" :class="{ pulse: run?.status === 'running' }" />
-        {{ statusConfig?.label }}
+    <!-- Progress ring -->
+    <div class="ring-wrap">
+      <svg width="72" height="72" viewBox="0 0 72 72">
+        <circle
+          cx="36" cy="36" r="30"
+          fill="none"
+          stroke="rgba(124,58,237,0.12)"
+          stroke-width="5"
+        />
+        <circle
+          cx="36" cy="36" r="30"
+          fill="none"
+          :stroke="statusColor(run?.status)"
+          stroke-width="5"
+          stroke-linecap="round"
+          :stroke-dasharray="`${progressAngle * Math.PI * 30 / 180} 999`"
+          transform="rotate(-90 36 36)"
+          style="transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1)"
+        />
+      </svg>
+      <div class="ring-center">
+        <template v-if="run">
+          <span class="ring-big">{{ run.iteration }}</span>
+          <span class="ring-small">/{{ run.maxIterations }}</span>
+        </template>
+        <span v-else class="ring-big">—</span>
       </div>
-      <span v-if="run" class="iter-label">
-        {{ run.iteration }} / {{ run.maxIterations }} iterations
-      </span>
     </div>
 
-    <div v-if="run" class="progress-bar">
-      <div class="progress-fill" :style="{ width: progress + '%' }" />
+    <!-- Status + Details -->
+    <div class="status-details">
+      <div class="status-row">
+        <span class="status-badge" :style="{ color: statusColor(run?.status) }">
+          {{ statusLabel(run?.status) }}
+        </span>
+        <span v-if="isRunning" class="elapsed">{{ runStore.elapsedFormatted }}</span>
+      </div>
+      <div v-if="run" class="detail-grid">
+        <div class="detail-cell">
+          <span class="label">Goal</span>
+          <span class="value goal-val">{{ run.goal }}</span>
+        </div>
+        <div class="detail-cell">
+          <span class="label">Model</span>
+          <span class="value">{{ run.modelName }}</span>
+        </div>
+        <div class="detail-cell">
+          <span class="label">CWD</span>
+          <span class="value mono">{{ run.cwd }}</span>
+        </div>
+        <div class="detail-cell">
+          <span class="label">Tokens</span>
+          <span class="value mono">{{ formatTokens(totalTokens) }}</span>
+        </div>
+      </div>
+      <div v-if="run?.goalReason" class="reason">
+        {{ run.goalReason }}
+      </div>
     </div>
-
-    <div v-if="run" class="meta">
-      <span class="meta-item">
-        <span class="meta-key">Goal</span>
-        <span class="meta-val">{{ run.goal }}</span>
-      </span>
-      <span class="meta-item">
-        <span class="meta-key">Model</span>
-        <span class="meta-val">{{ run.modelName }}</span>
-      </span>
-      <span class="meta-item">
-        <span class="meta-key">CWD</span>
-        <span class="meta-val truncate">{{ run.cwd }}</span>
-      </span>
-      <span v-if="totalTokens > 0" class="meta-item">
-        <span class="meta-key">Tokens</span>
-        <span class="meta-val">{{ formatTokens(totalTokens) }}</span>
-      </span>
-    </div>
-
-    <p v-if="run?.goalReason" class="reason">{{ run.goalReason }}</p>
   </div>
 </template>
 
 <style scoped>
 .goal-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1.25rem;
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 1.25rem 1.5rem;
   backdrop-filter: blur(12px);
+}
+
+.ring-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.ring-wrap svg {
+  display: block;
+}
+
+.ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-big {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-text);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ring-small {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.status-details {
+  flex: 1;
+  min-width: 0;
 }
 
 .status-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
 }
 
-.badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
+.status-badge {
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 0.25rem 0.75rem;
-  transition: box-shadow 0.3s;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  background: currentColor;
-  border-radius: 50%;
-}
-.dot.pulse {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.75); }
-}
-
-.iter-label {
-  font-size: 0.8rem;
+.elapsed {
+  font-size: 0.78rem;
   color: var(--color-text-muted);
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.progress-bar {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 1rem;
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 1rem;
 }
 
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #7c3aed, #a78bfa);
-  border-radius: 2px;
-  transition: width 0.5s ease;
-}
-
-.meta {
+.detail-cell {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  flex-direction: column;
 }
 
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.8rem;
-}
-
-.meta-key {
+.label {
+  font-size: 0.65rem;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
-.meta-val {
+.value {
+  font-size: 0.82rem;
   color: var(--color-text);
-  font-family: 'JetBrains Mono', monospace;
-  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.goal-val {
+  font-weight: 600;
+  color: var(--color-accent-light);
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+}
+
 .reason {
-  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
   color: var(--color-text-muted);
-  margin: 0.5rem 0 0;
   font-style: italic;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.5rem;
 }
 </style>

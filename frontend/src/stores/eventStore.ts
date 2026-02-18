@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 export type EventKind =
   | 'step_start'
@@ -13,6 +13,8 @@ export type EventKind =
   | 'error'
   | 'log'
   | 'llm_usage'
+  | 'reasoning'
+  | 'step_progress'
 
 export interface AgentEvent {
   kind: EventKind
@@ -25,7 +27,8 @@ export interface AgentEvent {
 
 export const useEventStore = defineStore('events', () => {
   const events = ref<AgentEvent[]>([])
-  const maxEvents = 1000
+  const maxEvents = 2000
+  const selectedIteration = ref<number | null>(null)
 
   function addEvent(raw: Omit<AgentEvent, 'id'>) {
     const event: AgentEvent = { ...raw, id: `${raw.ts}-${Math.random()}` }
@@ -43,5 +46,60 @@ export const useEventStore = defineStore('events', () => {
     events.value = []
   }
 
-  return { events, addEvent, clearForRun, clearAll }
+  function setSelectedIteration(iter: number | null) {
+    selectedIteration.value = iter
+  }
+
+  const filteredEvents = computed(() => {
+    if (selectedIteration.value === null) return events.value
+    return events.value.filter((e) => e.iteration === selectedIteration.value)
+  })
+
+  const reasoningEvents = computed(() =>
+    events.value.filter((e) => e.kind === 'reasoning'),
+  )
+
+  const toolCallEvents = computed(() =>
+    events.value.filter((e) => e.kind === 'tool_call'),
+  )
+
+  const goalCheckEvents = computed(() =>
+    events.value.filter((e) => e.kind === 'goal_check'),
+  )
+
+  const llmUsageEvents = computed(() =>
+    events.value.filter((e) => e.kind === 'llm_usage'),
+  )
+
+  const iterationGroups = computed(() => {
+    const groups = new Map<number, AgentEvent[]>()
+    for (const e of events.value) {
+      const iter = e.iteration
+      if (!groups.has(iter)) groups.set(iter, [])
+      groups.get(iter)!.push(e)
+    }
+    return groups
+  })
+
+  const latestReasoning = computed(() => {
+    const r = reasoningEvents.value
+    if (r.length === 0) return null
+    return r[r.length - 1]
+  })
+
+  return {
+    events,
+    selectedIteration,
+    filteredEvents,
+    reasoningEvents,
+    toolCallEvents,
+    goalCheckEvents,
+    llmUsageEvents,
+    iterationGroups,
+    latestReasoning,
+    addEvent,
+    clearForRun,
+    clearAll,
+    setSelectedIteration,
+  }
 })

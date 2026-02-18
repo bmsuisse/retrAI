@@ -18,6 +18,8 @@ EventKind = Literal[
     "error",
     "log",
     "llm_usage",
+    "reasoning",
+    "step_progress",
 ]
 
 

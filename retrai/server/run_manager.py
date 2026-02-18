@@ -159,6 +159,48 @@ class RunManager:
             command={"resume": human_input},
         )
 
+    async def abort_run(self, run_id: str) -> None:
+        """Cancel a running agent task and publish abort event."""
+        from retrai.events.types import AgentEvent
+
+        entry = self.get_or_raise(run_id)
+        if entry.status != "running":
+            raise RuntimeError(f"Run {run_id} is not running (status={entry.status})")
+        if entry.task and not entry.task.done():
+            entry.task.cancel()
+        entry.status = "aborted"
+        await entry.bus.publish(
+            AgentEvent(
+                kind="run_end",
+                run_id=run_id,
+                iteration=0,
+                payload={
+                    "status": "aborted",
+                    "reason": "Aborted by user",
+                    "total_tokens": 0,
+                    "estimated_cost_usd": 0.0,
+                },
+            )
+        )
+        await entry.bus.close()
+
+    def update_config(
+        self,
+        run_id: str,
+        *,
+        max_iterations: int | None = None,
+        model_name: str | None = None,
+        hitl_enabled: bool | None = None,
+    ) -> None:
+        """Patch allowed config fields on a run."""
+        entry = self.get_or_raise(run_id)
+        if max_iterations is not None:
+            entry.config.max_iterations = max_iterations
+        if model_name is not None:
+            entry.config.model_name = model_name
+        if hitl_enabled is not None:
+            entry.config.hitl_enabled = hitl_enabled
+
 
 # Global singleton used by FastAPI
 run_manager = RunManager()

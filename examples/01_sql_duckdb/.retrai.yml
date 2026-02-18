@@ -1,0 +1,6 @@
+goal: sql-benchmark
+dsn: "duckdb:///analytics.duckdb"
+query_file: "query.sql"
+max_ms: 50
+expected_rows: 10
+explain: true

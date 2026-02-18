@@ -17,6 +17,9 @@ def get_llm(model_name: str = "claude-sonnet-4-6", temperature: float = 0.0) -> 
       - "gemini/gemini-2.0-flash"
       - etc.
     """
-    from langchain_community.chat_models import ChatLiteLLM
+    try:
+        from langchain_litellm import ChatLiteLLM  # type: ignore[import-untyped]
+    except ImportError:
+        from langchain_community.chat_models import ChatLiteLLM  # type: ignore[no-redef]
 
-    return ChatLiteLLM(model=model_name, temperature=temperature)
+    return ChatLiteLLM(model=model_name, temperature=temperature)  # type: ignore[return-value]

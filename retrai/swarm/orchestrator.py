@@ -58,6 +58,9 @@ class SwarmOrchestrator:
             max_subtasks=self.max_workers,
         )
         logger.info("Decomposed into %d sub-tasks", len(subtasks))
+        for st in subtasks:
+            if st.role:
+                logger.info("  %s → role: %s", st.id, st.role)
 
         # Phase 2: Run workers in parallel
         worker_results = await self._dispatch_workers(subtasks)

@@ -1,0 +1,9 @@
+{
+    "include": ["."],
+    "reportMissingParameterType": "error",
+    "reportMissingReturnType": "error",
+    "reportUnknownParameterType": "error",
+    "reportUnknownMemberType": "warning",
+    "pythonVersion": "3.11",
+    "typeCheckingMode": "strict"
+}
