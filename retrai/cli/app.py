@@ -402,6 +402,22 @@ def run(
     raise typer.Exit(code=exit_code)
 
 
+def _find_free_port(host: str, start: int, max_attempts: int = 20) -> int:
+    """Return the first free TCP port at or after *start*."""
+    import socket
+
+    for offset in range(max_attempts):
+        candidate = start + offset
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind((host, candidate))
+                return candidate
+            except OSError:
+                continue
+    raise RuntimeError(f"No free port found in range {start}–{start + max_attempts - 1}")
+
+
 @app.command()
 def serve(
     host: str = typer.Option("0.0.0.0", "--host", help="Host to bind to"),
@@ -415,16 +431,22 @@ def serve(
 
     import uvicorn
 
+    actual_port = _find_free_port(host, port)
+    if actual_port != port:
+        console.print(
+            f"[yellow]Port {port} is in use — using port {actual_port} instead.[/yellow]"
+        )
+
     console.print(
         Panel(
-            f"[bold cyan]retrAI server[/bold cyan] starting on [bold]http://{host}:{port}[/bold]",
+            f"[bold cyan]retrAI server[/bold cyan] starting on [bold]http://{host}:{actual_port}[/bold]",
             border_style="cyan",
         )
     )
     uvicorn.run(
         "retrai.server.app:app",
         host=host,
-        port=port,
+        port=actual_port,
         reload=reload,
         log_level="info",
     )

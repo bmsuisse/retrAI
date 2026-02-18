@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from retrai.goals.ai_eval import AiEvalGoal
+from retrai.goals.api_test_goal import ApiTestGoal
 from retrai.goals.base import GoalBase
 from retrai.goals.bun_goal import BunTestGoal
 from retrai.goals.cancer_research_goal import CancerResearchGoal
@@ -51,6 +52,8 @@ _REGISTRY: dict[str, GoalBase] = {
     "docker-build": DockerGoal(),
     "lint": LintGoal(),
     "db-migrate": MigrationGoal(),
+    # HTTP integration testing
+    "api-test": ApiTestGoal(),
 }
 
 

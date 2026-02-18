@@ -50,3 +50,6 @@ class AgentState(TypedDict):
     consecutive_failures: int
     # Read-only tool result cache (key = "tool_name:json_args", value = result)
     tool_cache: dict[str, str]
+    # Mixture-of-Personas
+    mop_enabled: bool
+    mop_k: int

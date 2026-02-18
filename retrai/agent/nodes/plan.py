@@ -44,21 +44,22 @@ async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
 
     # Build messages — start with system prompt on first iteration
     messages = list(state["messages"])
+    system_content_base = ""
     if not messages:
-        system_content = _build_system_prompt(goal, state)
+        system_content_base = _build_system_prompt(goal, state)
         # Inject role-specific prompt if running as a swarm worker
         role_prompt = cfg.get("role_prompt", "")
         if role_prompt:
-            system_content += role_prompt
+            system_content_base += role_prompt
         # Auto-inject project context on first iteration
         context = _auto_context(state.get("cwd", "."))
         if context:
-            system_content += "\n\n## Project Context (auto-detected)\n" + context
+            system_content_base += "\n\n## Project Context (auto-detected)\n" + context
         # Inject past learnings from memory
         memory_section = _load_memories(state.get("cwd", "."))
         if memory_section:
-            system_content += "\n\n" + memory_section
-        messages = [SystemMessage(content=system_content)]
+            system_content_base += "\n\n" + memory_section
+        messages = [SystemMessage(content=system_content_base)]
 
     # Trim to avoid unbounded context growth
     messages = _trim_messages(messages)
@@ -67,6 +68,20 @@ async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
     llm_with_tools = llm.bind_tools(
         TOOL_DEFINITIONS,
     )  # type: ignore[attr-defined]
+
+    # Mixture-of-Personas: fan-out to k personas then aggregate
+    if state.get("mop_enabled"):
+        k = state.get("mop_k") or 3
+        return await _plan_with_mop(
+            state=state,
+            config=config,
+            base_llm=llm,
+            llm_with_tools=llm_with_tools,
+            messages=messages,
+            system_content_base=system_content_base,
+            k=k,
+            event_bus=event_bus,
+        )
 
     response: AIMessage = await llm_with_tools.ainvoke(messages)
 
@@ -131,6 +146,124 @@ async def plan_node(state: AgentState, config: RunnableConfig) -> dict:
             usage_meta.get("input_tokens", 0),
             usage_meta.get("output_tokens", 0),
         )
+
+    return {
+        "messages": [response],
+        "pending_tool_calls": pending,
+        "tool_results": [],
+        "total_tokens": new_total,
+        "estimated_cost_usd": new_cost,
+    }
+
+
+async def _plan_with_mop(
+    state: AgentState,
+    config: RunnableConfig,
+    base_llm: Any,
+    llm_with_tools: Any,
+    messages: list,
+    system_content_base: str,
+    k: int,
+    event_bus: Any,
+) -> dict:
+    """Mixture-of-Personas: gather k persona sub-plans, then aggregate.
+
+    Args:
+        state: Current agent state.
+        config: LangGraph runnable config.
+        base_llm: Raw LLM (no tool binding) used for persona sub-plans.
+        llm_with_tools: Tool-bound LLM used for final aggregation.
+        messages: Current conversation history (already trimmed).
+        system_content_base: Base system prompt text (may be empty on non-first iters).
+        k: Number of personas to sample.
+        event_bus: Optional event bus for publishing events.
+
+    Returns:
+        Dict with ``messages``, ``pending_tool_calls``, ``tool_results``,
+        ``total_tokens``, and ``estimated_cost_usd``.
+    """
+    from retrai.agent.personas import get_personas
+
+    run_id = state["run_id"]
+    iteration = state["iteration"]
+    personas = get_personas(k=k)
+
+    if event_bus:
+        await event_bus.publish(
+            AgentEvent(
+                kind="log",
+                run_id=run_id,
+                iteration=iteration,
+                payload={
+                    "message": (
+                        f"🎭 MoP: consulting {len(personas)} personas in parallel: "
+                        + ", ".join(p.name for p in personas)
+                    ),
+                    "level": "info",
+                },
+            )
+        )
+
+    # Fan-out: each persona gets the conversation history + its own system suffix
+    async def _persona_plan(persona_prompt: str) -> str:
+        persona_messages = list(messages)
+        if persona_messages and hasattr(persona_messages[0], "content"):
+            # Prepend persona voice to the existing system message content
+            combined = persona_prompt + "\n\n" + str(persona_messages[0].content)
+            from langchain_core.messages import SystemMessage as _SM
+
+            persona_messages = [_SM(content=combined)] + persona_messages[1:]
+        resp = await base_llm.ainvoke(persona_messages)
+        return resp.content if isinstance(resp.content, str) else str(resp.content)
+
+    import asyncio
+
+    persona_plans: list[str] = await asyncio.gather(
+        *[_persona_plan(p.system_prompt) for p in personas]
+    )
+
+    # Aggregate: present all persona views to the tool-capable LLM
+    aggregation_parts = []
+    for persona, plan in zip(personas, persona_plans):
+        aggregation_parts.append(f"### {persona.name}\n{plan}")
+
+    aggregation_prompt = (
+        "You have received analysis from multiple expert personas:\n\n"
+        + "\n\n".join(aggregation_parts)
+        + "\n\n"
+        "Based on the above perspectives, decide the single best next action. "
+        "Select the most relevant tools to call and explain your reasoning briefly."
+    )
+
+    from langchain_core.messages import HumanMessage as _HM
+
+    agg_messages = list(messages) + [_HM(content=aggregation_prompt)]
+    response: AIMessage = await llm_with_tools.ainvoke(agg_messages)
+
+    usage_meta = getattr(response, "usage_metadata", None) or {}
+
+    # Extract tool calls
+    pending: list[ToolCall] = []
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        for tc in response.tool_calls:
+            pending.append(
+                ToolCall(
+                    id=str(tc.get("id") or ""),
+                    name=tc.get("name", ""),
+                    args=tc.get("args", {}),
+                )
+            )
+
+    new_total = (
+        state.get("total_tokens", 0)
+        + usage_meta.get("input_tokens", 0)
+        + usage_meta.get("output_tokens", 0)
+    )
+    new_cost = state.get("estimated_cost_usd", 0.0) + _estimate_cost(
+        state["model_name"],
+        usage_meta.get("input_tokens", 0),
+        usage_meta.get("output_tokens", 0),
+    )
 
     return {
         "messages": [response],
@@ -215,7 +348,19 @@ def _build_system_prompt(goal: Any, state: AgentState) -> str:
         "ClinicalTrials.gov (trials), UniProt (proteins), ChEMBL (drug targets), "
         "PDB (structures). Essential for cancer/disease research.\n"
         "- `rust_bench`: Run 'cargo bench' and parse Criterion/libtest output "
-        "into structured JSON with ns/iter and confidence intervals.\n\n"
+        "into structured JSON with ns/iter and confidence intervals.\n"
+        "- `optimize`: Apply source-level optimizations (dead-code removal, "
+        "loop restructuring, algorithmic improvements) to Python files.\n"
+        "- `profiler`: Profile Python functions with cProfile/line_profiler "
+        "and return hotspot reports.\n"
+        "- `memory_profile`: Measure per-line memory usage of Python code "
+        "using tracemalloc.\n"
+        "- `benchmark_compare`: Compare before/after benchmark results and "
+        "report speedup ratios.\n"
+        "- `dependency_graph`: Analyse import graph of a Python package "
+        "and detect cycles.\n"
+        "- `lsp_definition` / `lsp_references` / `lsp_hover`: LSP-powered "
+        "code intelligence (jump-to-definition, find all references, hover docs).\n\n"
         "## Strategy\n"
         "1. **Understand first**: Use `grep_search` and `find_files` "
         "to quickly locate relevant code. Read key files.\n"
