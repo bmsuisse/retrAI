@@ -1,0 +1,7 @@
+# Generated data files
+*.duckdb
+*.duckdb.wal
+churn.csv
+.pytest_report.json
+__pycache__/
+.retrai/

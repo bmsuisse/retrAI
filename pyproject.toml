@@ -1,0 +1,95 @@
+[project]
+name = "retrai"
+version = "0.1.0"
+description = "Self-solving AI agent loop — run a goal, watch it fix itself"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [
+    { name = "Dominik Peter" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+keywords = ["ai", "agent", "testing", "autonomous", "llm", "copilot"]
+dependencies = [
+    "langgraph>=0.5.0",
+    "langchain-core>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-litellm>=0.2.0",
+    "litellm>=1.50.0",
+    "typer>=0.15.0",
+    "textual>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "websockets>=13.0",
+    "pydantic>=2.9.0",
+    "python-dotenv>=1.0.0",
+    "pytest-json-report>=1.5.0",
+    "rich>=13.9.0",
+    "pyyaml>=6.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0,<1.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "pyright>=1.1.389",
+]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.26.0",
+]
+search = [
+    "duckduckgo-search>=7.0.0",
+]
+sql = [
+    "databricks-sql-connector>=3.0.0",
+    "sqlalchemy>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bmsuisse/retrAI"
+Repository = "https://github.com/bmsuisse/retrAI"
+Documentation = "https://github.com/bmsuisse/retrAI#readme"
+Issues = "https://github.com/bmsuisse/retrAI/issues"
+
+[project.scripts]
+retrai = "retrai.cli.app:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["retrai"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

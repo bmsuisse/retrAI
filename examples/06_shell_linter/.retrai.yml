@@ -1,0 +1,8 @@
+goal: shell-goal
+check_command: "ruff check . --select E,W,F --statistics"
+success_condition:
+  exit_code: 0
+system_prompt: |
+  Fix all Ruff linting errors in the Python files.
+  Do NOT change behaviour — only fix style and lint issues.
+  Run `ruff check . --select E,W,F --statistics` to see remaining issues.

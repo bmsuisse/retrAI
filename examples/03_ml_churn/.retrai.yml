@@ -1,0 +1,6 @@
+goal: ml-optimize
+data_file: churn.csv
+target_column: churned
+target_metric: f1
+target_value: 0.88
+task_type: classification

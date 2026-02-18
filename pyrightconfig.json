@@ -1,0 +1,17 @@
+{
+  "include": ["retrai", "tests"],
+  "exclude": ["**/__pycache__", ".venv", "frontend"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "warning",
+  "reportUndefinedVariable": "error",
+  "reportAttributeAccessIssue": "warning",
+  "reportGeneralTypeIssues": "warning",
+  "reportOptionalMemberAccess": "warning",
+  "reportReturnType": "warning",
+  "reportUnusedImport": "information",
+  "reportOperatorIssue": "warning"
+}
