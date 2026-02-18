@@ -1,18 +1,16 @@
-"""Agent memory — persistent cross-run knowledge store."""
+"""Agent memory — persistent cross-run knowledge store backed by mem0 + local Qdrant."""
 
 from __future__ import annotations
 
-import json
 import logging
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-MAX_MEMORIES = 50
-MEMORY_FILE = ".retrai/memory.json"
+MEMORY_USER_ID = "retrai_agent"
 
 
 @dataclass
@@ -26,7 +24,13 @@ class Memory:
     relevance_score: float = 1.0
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            "insight": self.insight,
+            "category": self.category,
+            "timestamp": self.timestamp,
+            "run_id": self.run_id,
+            "relevance_score": self.relevance_score,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Memory:
@@ -38,13 +42,52 @@ class Memory:
             relevance_score=data.get("relevance_score", 1.0),
         )
 
+    @classmethod
+    def from_mem0(cls, item: dict[str, Any]) -> Memory:
+        """Construct a Memory from a mem0 search/get result dict."""
+        meta = item.get("metadata") or {}
+        return cls(
+            insight=item.get("memory", item.get("text", "")),
+            category=meta.get("category", "tip"),
+            timestamp=meta.get("timestamp", time.time()),
+            run_id=meta.get("run_id", ""),
+            relevance_score=float(item.get("score", 1.0)),
+        )
+
+
+def _build_mem0_config(qdrant_path: Path) -> dict[str, Any]:
+    """Build mem0 config using local file-based Qdrant + OpenAI embeddings."""
+    return {
+        "vector_store": {
+            "provider": "qdrant",
+            "config": {
+                "collection_name": "retrai_memory",
+                "path": str(qdrant_path),
+                "embedding_model_dims": 1536,  # text-embedding-3-small
+            },
+        },
+        "embedder": {
+            "provider": "openai",
+            "config": {"model": "text-embedding-3-small"},
+        },
+        "llm": {
+            "provider": "openai",
+            "config": {"model": "gpt-4o-mini"},
+        },
+    }
+
 
 class MemoryStore:
-    """JSON-backed persistent memory store for a project.
+    """mem0-backed persistent memory store for a project.
 
     Stores learnings, strategies, and error patterns that persist
-    across agent runs. Located at `.retrai/memory.json` in the
-    project directory.
+    across agent runs. Uses local Qdrant (no server) for vector storage
+    and OpenAI text-embedding-3-small for semantic search.
+
+    Qdrant data is persisted at `.retrai/qdrant/` in the project directory.
+
+    Requires the `memory` optional extra:
+        uv pip install "retrai[memory]"
 
     Usage:
         store = MemoryStore("/path/to/project")
@@ -54,97 +97,80 @@ class MemoryStore:
 
     def __init__(self, cwd: str) -> None:
         self.cwd = Path(cwd).resolve()
-        self._path = self.cwd / MEMORY_FILE
-        self._memories: list[Memory] = []
-        self._load()
+        self._qdrant_path = self.cwd / ".retrai" / "qdrant"
+        self._qdrant_path.mkdir(parents=True, exist_ok=True)
+        self._client = self._init_client()
 
-    def _load(self) -> None:
-        """Load memories from disk."""
-        if not self._path.exists():
-            self._memories = []
-            return
+    def _init_client(self) -> Any:
         try:
-            data = json.loads(self._path.read_text(encoding="utf-8"))
-            self._memories = [Memory.from_dict(m) for m in data.get("memories", [])]
-        except (json.JSONDecodeError, OSError) as e:
-            logger.warning("Failed to load memory store: %s", e)
-            self._memories = []
+            from mem0 import Memory as Mem0Memory  # type: ignore[import-untyped]
 
-    def _save(self) -> None:
-        """Persist memories to disk."""
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            "version": 1,
-            "memories": [m.to_dict() for m in self._memories],
-        }
-        self._path.write_text(
-            json.dumps(data, indent=2, default=str),
-            encoding="utf-8",
-        )
+            config = _build_mem0_config(self._qdrant_path)
+            return Mem0Memory.from_config(config)
+        except ImportError as e:
+            raise ImportError(
+                "mem0ai is required for MemoryStore. "
+                "Install it with: uv pip install 'retrai[memory]'"
+            ) from e
 
     def add(self, memory: Memory) -> None:
-        """Add a memory and auto-prune if over limit."""
-        self._memories.append(memory)
-        self._prune()
-        self._save()
+        """Add a memory insight."""
+        self._client.add(
+            memory.insight,
+            user_id=MEMORY_USER_ID,
+            metadata={
+                "category": memory.category,
+                "timestamp": memory.timestamp,
+                "run_id": memory.run_id,
+                "relevance_score": memory.relevance_score,
+            },
+        )
 
     def add_batch(self, memories: list[Memory]) -> None:
         """Add multiple memories at once."""
-        self._memories.extend(memories)
-        self._prune()
-        self._save()
-
-    def _prune(self) -> None:
-        """Keep only the most relevant/recent memories."""
-        if len(self._memories) <= MAX_MEMORIES:
-            return
-        # Sort by relevance * recency, keep top N
-        now = time.time()
-        scored = sorted(
-            self._memories,
-            key=lambda m: m.relevance_score * (1.0 / (1.0 + (now - m.timestamp) / 86400)),
-            reverse=True,
-        )
-        self._memories = scored[:MAX_MEMORIES]
+        for m in memories:
+            self.add(m)
 
     def search(self, query: str, limit: int = 5) -> list[Memory]:
-        """Find memories relevant to a query (simple keyword match)."""
-        query_lower = query.lower()
-        query_words = set(query_lower.split())
-
-        scored: list[tuple[float, Memory]] = []
-        for m in self._memories:
-            insight_lower = m.insight.lower()
-            # Score by word overlap
-            insight_words = set(insight_lower.split())
-            overlap = len(query_words & insight_words)
-            if overlap > 0 or query_lower in insight_lower:
-                score = overlap + (1.0 if query_lower in insight_lower else 0.0)
-                scored.append((score, m))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [m for _, m in scored[:limit]]
+        """Find memories semantically relevant to a query."""
+        try:
+            results = self._client.search(query, user_id=MEMORY_USER_ID, limit=limit)
+            # mem0 returns a dict with a "results" key in newer versions
+            items: list[dict[str, Any]] = (
+                results.get("results", results) if isinstance(results, dict) else results
+            )
+            return [Memory.from_mem0(item) for item in items]
+        except Exception as e:
+            logger.warning("Memory search failed: %s", e)
+            return []
 
     def get_all(self) -> list[Memory]:
         """Return all stored memories."""
-        return list(self._memories)
+        try:
+            results = self._client.get_all(user_id=MEMORY_USER_ID)
+            items: list[dict[str, Any]] = (
+                results.get("results", results) if isinstance(results, dict) else results
+            )
+            return [Memory.from_mem0(item) for item in items]
+        except Exception as e:
+            logger.warning("Memory get_all failed: %s", e)
+            return []
 
     def clear(self) -> None:
         """Remove all memories."""
-        self._memories = []
-        self._save()
+        try:
+            self._client.delete_all(user_id=MEMORY_USER_ID)
+        except Exception as e:
+            logger.warning("Memory clear failed: %s", e)
 
     def format_for_prompt(self, limit: int = 10) -> str:
         """Format memories as a section for the system prompt."""
-        if not self._memories:
+        memories = self.get_all()
+        if not memories:
             return ""
 
-        # Pick most recent/relevant
-        recent = sorted(
-            self._memories,
-            key=lambda m: m.timestamp,
-            reverse=True,
-        )[:limit]
+        # Sort by recency (timestamp desc), take top N
+        recent = sorted(memories, key=lambda m: m.timestamp, reverse=True)[:limit]
 
         lines = ["## Past Learnings (from previous runs)\n"]
         for m in recent:
@@ -162,4 +188,4 @@ class MemoryStore:
         return "\n".join(lines)
 
     def __len__(self) -> int:
-        return len(self._memories)
+        return len(self.get_all())
