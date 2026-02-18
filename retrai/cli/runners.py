@@ -111,6 +111,7 @@ def _build_initial_state(cfg: RunConfig) -> dict[str, Any]:
         "goal_reason": "",
         "iteration": 0,
         "max_iterations": cfg.max_iterations,
+        "stop_mode": cfg.stop_mode,
         "hitl_enabled": cfg.hitl_enabled,
         "model_name": cfg.model_name,
         "cwd": cfg.cwd,

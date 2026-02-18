@@ -220,6 +220,7 @@ class FileWatcher:
             "goal_reason": "",
             "iteration": 0,
             "max_iterations": self.max_iterations,
+            "stop_mode": "soft",
             "hitl_enabled": False,
             "model_name": self.model_name,
             "cwd": str(self.cwd),

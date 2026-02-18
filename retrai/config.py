@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+StopMode = Literal["soft", "hard"]
 
 # Provider definitions — models are fetched dynamically from LiteLLM
 PROVIDER_DEFS: list[dict[str, Any]] = [
@@ -144,6 +146,7 @@ class RunConfig:
     cwd: str = field(default_factory=lambda: str(Path.cwd()))
     model_name: str = "claude-sonnet-4-6"
     max_iterations: int = 50
+    stop_mode: StopMode = "soft"
     hitl_enabled: bool = False
     sandbox_path: str = ".retrai/sandbox"
     run_id: str = ""

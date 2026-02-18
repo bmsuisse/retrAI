@@ -34,6 +34,7 @@ class AgentState(TypedDict):
     # Loop control
     iteration: int
     max_iterations: int
+    stop_mode: str  # "soft" or "hard"
     hitl_enabled: bool
     # Run metadata
     model_name: str

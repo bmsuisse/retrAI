@@ -66,28 +66,39 @@ async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
     cost_str = f" | Cost: ${cost_usd:.4f}" if cost_usd > 0 else ""
     tokens = state.get("total_tokens", 0)
     token_str = f" | Tokens: {tokens:,}" if tokens > 0 else ""
+    stop_mode = state.get("stop_mode", "hard")
+    iter_header = (
+        f"[Iteration {new_iteration}/{state['max_iterations']}"
+        f"{token_str}{cost_str}] "
+    )
 
     if achieved:
-        status_msg = HumanMessage(
-            content=(
-                f"[Iteration {new_iteration}/{state['max_iterations']}"
-                f"{token_str}{cost_str}] "
-                f"✅ Goal ACHIEVED! {reason}"
-            )
-        )
+        status_msg = HumanMessage(content=f"{iter_header}✅ Goal ACHIEVED! {reason}")
     elif new_iteration >= state["max_iterations"]:
         status_msg = HumanMessage(
+            content=f"{iter_header}⛔ Max iterations reached. Final status: {reason}"
+        )
+    elif stop_mode == "soft" and remaining == 1:
+        status_msg = HumanMessage(
             content=(
-                f"[Iteration {new_iteration}/{state['max_iterations']}"
-                f"{token_str}{cost_str}] "
-                f"⛔ Max iterations reached. Final status: {reason}"
+                f"{iter_header}"
+                "⚠️ SOFT STOP — this is your LAST working iteration.\n\n"
+                f"You did NOT complete the goal. Status: {reason}\n\n"
+                "On the NEXT iteration you MUST produce a **summary report** "
+                "for the user. The report should include:\n"
+                "1. What was attempted and which strategies were tried\n"
+                "2. What succeeded (partial progress)\n"
+                "3. What failed and why\n"
+                "4. Concrete recommendations for the user to continue manually\n"
+                "5. Any files that were modified\n\n"
+                "Do NOT attempt more fixes. Focus entirely on writing a clear, "
+                "helpful summary so the user can pick up where you left off."
             )
         )
     else:
         status_msg = HumanMessage(
             content=(
-                f"[Iteration {new_iteration}/{state['max_iterations']}"
-                f"{token_str}{cost_str}] "
+                f"{iter_header}"
                 f"Goal NOT YET achieved. {reason}\n\n"
                 f"You have {remaining} iterations remaining. "
                 "DO NOT give up. Analyze what went wrong and try a "

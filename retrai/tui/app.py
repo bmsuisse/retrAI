@@ -227,6 +227,7 @@ class RetrAITUI(App[None]):
             "goal_reason": "",
             "iteration": 0,
             "max_iterations": self.cfg.max_iterations,
+            "stop_mode": self.cfg.stop_mode,
             "hitl_enabled": self.cfg.hitl_enabled,
             "model_name": self.cfg.model_name,
             "cwd": self.cfg.cwd,

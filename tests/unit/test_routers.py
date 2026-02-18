@@ -19,6 +19,7 @@ def _state(**overrides) -> AgentState:
         "goal_reason": "",
         "iteration": 0,
         "max_iterations": 10,
+        "stop_mode": "hard",
         "hitl_enabled": False,
         "model_name": "claude-sonnet-4-6",
         "cwd": "/tmp",

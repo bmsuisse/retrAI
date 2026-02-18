@@ -49,3 +49,13 @@ def test_custom_model():
 def test_max_iterations_respected():
     cfg = RunConfig(goal="pytest", max_iterations=5)
     assert cfg.max_iterations == 5
+
+
+def test_stop_mode_defaults_to_soft():
+    cfg = RunConfig(goal="pytest")
+    assert cfg.stop_mode == "soft"
+
+
+def test_stop_mode_hard():
+    cfg = RunConfig(goal="pytest", stop_mode="hard")
+    assert cfg.stop_mode == "hard"

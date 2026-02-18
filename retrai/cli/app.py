@@ -293,6 +293,10 @@ def run(
         "claude-sonnet-4-6", "--model", "-m", help="LLM model name (LiteLLM format)"
     ),
     max_iter: int = typer.Option(50, "--max-iter", "-n", help="Maximum agent iterations"),
+    stop_mode: str = typer.Option(
+        "soft", "--stop-mode",
+        help="Stop mode: 'soft' (summary on last iter) or 'hard' (immediate stop)",
+    ),
     hitl: bool = typer.Option(False, "--hitl", help="Enable human-in-the-loop checkpoints"),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key (overrides env var)", envvar="LLM_API_KEY"
@@ -318,11 +322,13 @@ def run(
         api_base=api_base,
     )
 
+    validated_stop_mode = stop_mode if stop_mode in ("soft", "hard") else "soft"
     cfg = RunConfig(
         goal=str(resolved["goal"]),
         cwd=resolved_cwd,
         model_name=str(resolved["model"]),
         max_iterations=int(resolved["max_iterations"]),
+        stop_mode=validated_stop_mode,  # type: ignore[arg-type]
         hitl_enabled=bool(resolved["hitl_enabled"]),
     )
 
@@ -331,6 +337,7 @@ def run(
             Text.from_markup(
                 f"[bold cyan]retrAI[/bold cyan]  [dim]—[/dim]  goal=[bold]{cfg.goal}[/bold]  "
                 f"model=[bold]{cfg.model_name}[/bold]  max-iter=[bold]{cfg.max_iterations}[/bold]  "
+                f"stop=[bold]{cfg.stop_mode}[/bold]  "
                 f"hitl=[bold]{'on' if cfg.hitl_enabled else 'off'}[/bold]\n"
                 f"[dim]cwd: {resolved_cwd}[/dim]"
             ),
@@ -679,6 +686,9 @@ def solve(
     cwd: str = typer.Option(".", "--cwd", "-C", help="Project directory"),
     model: str = typer.Option("claude-sonnet-4-6", "--model", "-m", help="LLM model"),
     max_iter: int = typer.Option(30, "--max-iter", "-n", help="Maximum iterations"),
+    stop_mode: str = typer.Option(
+        "soft", "--stop-mode", help="Stop mode: 'soft' (summary on last iter) or 'hard'"
+    ),
     api_key: str | None = typer.Option(
         None, "--api-key", "-k", help="API key", envvar="LLM_API_KEY"
     ),
@@ -720,11 +730,13 @@ def solve(
         )
     )
 
+    validated_stop_mode = stop_mode if stop_mode in ("soft", "hard") else "soft"
     cfg = RunConfig(
         goal="solve",
         cwd=resolved_cwd,
         model_name=model,
         max_iterations=max_iter,
+        stop_mode=validated_stop_mode,  # type: ignore[arg-type]
         hitl_enabled=False,
     )
 
