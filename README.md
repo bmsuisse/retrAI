@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="retrAI logo" width="200">
+</p>
+
 # retrAI
 
 ```

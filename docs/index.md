@@ -1,4 +1,5 @@
 <div class="hero">
+  <img src="assets/logo.png" alt="retrAI logo" width="180" style="display:block;margin:0 auto 1rem auto;">
   <h1>retrAI</h1>
   <p>A self-solving AI agent loop. Point it at any project, give it a goal, watch it fix itself.</p>
   <span class="badge">pytest</span>

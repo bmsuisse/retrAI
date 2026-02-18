@@ -40,7 +40,7 @@ theme:
     code: JetBrains Mono
   icon:
     repo: fontawesome/brands/github
-    logo: material/robot-outline
+    logo: assets/logo.png
 
 extra_css:
   - stylesheets/extra.css
