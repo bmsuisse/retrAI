@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Vertical
+from textual.css.query import NoMatches
 from textual.reactive import reactive
 from textual.widgets import DataTable, Label, ProgressBar, Sparkline, Static, Tree
 
@@ -125,7 +126,7 @@ class StatusPanel(Static):
             self.query_one("#iteration-progress", ProgressBar).update(
                 progress=value,
             )
-        except Exception:
+        except NoMatches:
             pass
 
     def watch_elapsed(self, value: float) -> None:
@@ -136,7 +137,7 @@ class StatusPanel(Static):
             self.query_one("#timer-label", Label).update(
                 f"⏱  {h:02d}:{m:02d}:{s:02d}"
             )
-        except Exception:
+        except NoMatches:
             pass
 
     def watch_total_tokens(self, value: int) -> None:
@@ -150,7 +151,7 @@ class StatusPanel(Static):
             self.query_one("#token-count", Label).update(
                 f"[dim]Tokens:[/dim] [#38bdf8]{display}[/#38bdf8]"
             )
-        except Exception:
+        except NoMatches:
             pass
 
     def _refresh_badge(self) -> None:
@@ -159,7 +160,7 @@ class StatusPanel(Static):
             self.query_one("#status-badge", Label).update(
                 f"[{style}]  {icon}  {self.status}  [/{style}]"
             )
-        except Exception:
+        except NoMatches:
             pass
 
 
@@ -204,7 +205,7 @@ class ToolStatsPanel(Static):
                 )
         try:
             self.query_one("#tool-stats-body", Label).update("\n".join(lines))
-        except Exception:
+        except NoMatches:
             pass
 
 
@@ -225,7 +226,7 @@ class TokenSparklineWidget(Static):
         self._data.append(float(tokens))
         try:
             self.query_one("#token-sparkline", Sparkline).data = list(self._data)
-        except Exception:
+        except NoMatches:
             pass
 
 
@@ -254,7 +255,7 @@ class IterationTimeline(Static):
             self.query_one("#timeline-markers", Label).update(
                 " ".join(self._markers)
             )
-        except Exception:
+        except NoMatches:
             pass
 
     def add_running_marker(self) -> None:
@@ -264,7 +265,7 @@ class IterationTimeline(Static):
             self.query_one("#timeline-markers", Label).update(
                 " ".join(self._markers)
             )
-        except Exception:
+        except NoMatches:
             pass
 
     def replace_last_marker(self, achieved: bool) -> None:
@@ -325,7 +326,7 @@ class ToolUsageTable(Static):
                     str(errors) if errors else "[dim]0[/dim]",
                     f"[{success_color}]{success}%[/{success_color}]",
                 )
-        except Exception:
+        except NoMatches:
             pass
 
 
@@ -349,7 +350,7 @@ class DashboardSparkline(Static):
         self._data.append(float(tokens))
         try:
             self.query_one("#dash-sparkline", Sparkline).data = list(self._data)
-        except Exception:
+        except NoMatches:
             pass
 
 
@@ -407,7 +408,7 @@ class FileTreeWidget(Static):
                     else:
                         current_node = current_node.add(f"📁 {part}")
                         current_node.expand()
-        except Exception:
+        except NoMatches:
             pass
 
 

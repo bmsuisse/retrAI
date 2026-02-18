@@ -6,6 +6,7 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Center, Horizontal, Vertical, VerticalScroll
+from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 from textual.widgets import (
     Button,
@@ -309,7 +310,7 @@ class WizardScreen(ModalScreen[RunConfig | None]):
         """Update the model select widget based on chosen provider."""
         try:
             model_select = self.query_one("#model-select", Select)
-        except Exception:
+        except NoMatches:
             return
 
         providers = get_provider_models()
@@ -336,7 +337,7 @@ class WizardScreen(ModalScreen[RunConfig | None]):
                 sel = self.query_one("#goal-select", Select)
                 if isinstance(sel.value, str):
                     self._goal = sel.value
-            except Exception:
+            except NoMatches:
                 pass
 
         elif step == "configure_model":
@@ -344,13 +345,13 @@ class WizardScreen(ModalScreen[RunConfig | None]):
                 psel = self.query_one("#provider-select", Select)
                 if isinstance(psel.value, str):
                     self._provider = psel.value
-            except Exception:
+            except NoMatches:
                 pass
             try:
                 msel = self.query_one("#model-select", Select)
                 if isinstance(msel.value, str):
                     self._model_name = msel.value
-            except Exception:
+            except NoMatches:
                 pass
 
         elif step == "set_parameters":
@@ -359,18 +360,18 @@ class WizardScreen(ModalScreen[RunConfig | None]):
                 val = max_iter_input.value.strip()
                 if val.isdigit():
                     self._max_iterations = int(val)
-            except Exception:
+            except NoMatches:
                 pass
             try:
                 cwd_input = self.query_one("#cwd-input", Input)
                 if cwd_input.value.strip():
                     self._cwd = cwd_input.value.strip()
-            except Exception:
+            except NoMatches:
                 pass
             try:
                 hitl_switch = self.query_one("#hitl-switch", Switch)
                 self._hitl_enabled = hitl_switch.value
-            except Exception:
+            except NoMatches:
                 pass
 
     def _go_next(self) -> None:
@@ -389,7 +390,7 @@ class WizardScreen(ModalScreen[RunConfig | None]):
         try:
             indicator = self.query_one("#step-indicator", Static)
             indicator.update(_build_step_indicator(self._current_step))
-        except Exception:
+        except NoMatches:
             pass
 
         # Clear and repopulate body
@@ -397,14 +398,14 @@ class WizardScreen(ModalScreen[RunConfig | None]):
             body = self.query_one("#wizard-body", VerticalScroll)
             body.remove_children()
             body.mount_all(list(self._compose_step()))
-        except Exception:
+        except NoMatches:
             pass
 
         # Update button states
         try:
             back_btn = self.query_one("#btn-back", Button)
             back_btn.disabled = self._current_step_idx == 0
-        except Exception:
+        except NoMatches:
             pass
 
         try:
@@ -415,7 +416,7 @@ class WizardScreen(ModalScreen[RunConfig | None]):
             else:
                 next_btn.label = "Next →"
                 next_btn.variant = "primary"
-        except Exception:
+        except NoMatches:
             pass
 
     # ── Launch ────────────────────────────────────────────────

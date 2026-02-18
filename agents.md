@@ -261,6 +261,35 @@ The agent's system prompt ([plan.py](retrai/agent/nodes/plan.py) `_build_system_
 
 ---
 
+## Code Quality Standards
+
+The agent **must** produce clean, professional code. The following rules are non-negotiable:
+
+### File Size
+
+- **Hard limit: 1,000 lines per file.** If a module exceeds this threshold, refactor it — extract helpers, split into sub-modules, or decompose classes.
+
+### No AI Slop
+
+Do not generate any of the following:
+
+- **Redundant comments** — no `# increment counter`, `# return the result`, or restating what the next line already says. Comments are only for *why*, never for *what*.
+- **Excessive try/except** — only catch exceptions you can meaningfully handle. Never wrap code in broad `try: ... except Exception: pass` blocks. Let errors propagate unless there is a concrete recovery strategy.
+- **Unnecessary `isinstance` / type-guard clutter** — trust the type system. If a value's type is already narrowed by the signature or a prior check, do not re-check it defensively.
+- **Apologetic or verbose inline narration** — no `# TODO: This could be improved`, `# Note: this is a workaround`, or multi-line docstrings that restate the function signature. Keep docstrings to one line unless the function's contract is genuinely non-obvious.
+- **Boilerplate logging at every step** — log at boundaries (entry, error, result), not between every line.
+
+In short: write code a senior engineer would be proud to review. Concise, intentional, zero filler.
+
+### Type Safety
+
+- All Python code **must** pass `pyright` in strict mode with zero errors.
+- Use precise type annotations everywhere: function signatures, return types, class attributes, and local variables where inference is ambiguous.
+- Prefer `TypedDict`, `Literal`, `TypeAlias`, and `Protocol` over `Any`, `dict`, or `object`.
+- Never use `# type: ignore` unless accompanied by a justifying comment and a linked issue.
+
+---
+
 ## Interfaces
 
 | Interface | Entry Point | Transport |

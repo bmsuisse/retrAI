@@ -76,7 +76,7 @@ def get_provider_models() -> dict[str, dict[str, Any]]:
     try:
         import litellm
         all_models = sorted(litellm.model_cost.keys())
-    except Exception:
+    except (ImportError, AttributeError):
         all_models = []
 
     result: dict[str, dict[str, Any]] = {}
@@ -103,7 +103,7 @@ def get_provider_models() -> dict[str, dict[str, Any]]:
                     entry["models"] = list_copilot_models(str(gh_token))
                 else:
                     entry["models"] = _copilot_fallback_models()
-            except Exception:
+            except (ImportError, OSError):
                 entry["models"] = _copilot_fallback_models()
             result[name] = entry
             continue

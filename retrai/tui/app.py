@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.css.query import NoMatches
 from textual.widgets import (
     Footer,
     Header,
@@ -159,7 +160,7 @@ class RetrAITUI(App[None]):
         """Switch to a specific tab by ID."""
         try:
             self.query_one(TabbedContent).active = tab_id
-        except Exception:
+        except NoMatches:
             pass
 
     def action_toggle_sidebar(self) -> None:
@@ -167,7 +168,7 @@ class RetrAITUI(App[None]):
         try:
             sidebar = self.query_one("#sidebar")
             sidebar.display = not sidebar.display
-        except Exception:
+        except NoMatches:
             pass
 
     def action_scroll_top(self) -> None:
