@@ -1,0 +1,5 @@
+goal: cancer-research
+topic: "KRAS G12C inhibitors for non-small cell lung cancer"
+output_dir: .retrai/research
+max_iterations: 30
+model: claude-sonnet-4-6

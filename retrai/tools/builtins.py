@@ -1234,6 +1234,124 @@ class SqlBenchTool(BaseTool):
 
 
 # ──────────────────────────────────────────────────────────────────
+# Biomedical / Scientific Search
+# ──────────────────────────────────────────────────────────────────
+
+
+class BioSearchTool(BaseTool):
+    """Search biomedical databases: PubMed, ClinicalTrials, UniProt, ChEMBL, PDB."""
+
+    name = "bio_search"
+    parallel_safe = True
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Search biomedical databases for scientific literature, "
+                "clinical trials, protein data, drug targets, and structures. "
+                "Sources: 'pubmed', 'clinicaltrials', 'uniprot', 'chembl', 'pdb'."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "description": (
+                            "Database to search: 'pubmed' (literature), "
+                            "'clinicaltrials' (clinical trials), "
+                            "'uniprot' (proteins), 'chembl' (drug targets), "
+                            "'pdb' (protein structures)"
+                        ),
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Search query",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum results to return (default 10)",
+                        "default": 10,
+                    },
+                    "save_path": {
+                        "type": "string",
+                        "description": (
+                            "Optional file path to save results "
+                            "(relative to project root)"
+                        ),
+                    },
+                },
+                "required": ["source", "query"],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.bio_search import bio_search
+
+        result = await bio_search(
+            source=args["source"],
+            query=args["query"],
+            max_results=args.get("max_results", 10),
+            save_path=args.get("save_path"),
+            cwd=cwd,
+        )
+        return result, False
+
+
+# ──────────────────────────────────────────────────────────────────
+# Rust Benchmarking
+# ──────────────────────────────────────────────────────────────────
+
+
+class RustBenchTool(BaseTool):
+    """Run cargo bench and return structured Criterion/libtest benchmark results."""
+
+    name = "rust_bench"
+    parallel_safe = False
+
+    def get_schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=(
+                "Run 'cargo bench' in the project directory and parse "
+                "Criterion or libtest benchmark output into structured JSON. "
+                "Returns ns/iter, confidence intervals, and throughput."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "bench_name": {
+                        "type": "string",
+                        "description": (
+                            "Optional benchmark name filter (substring match). "
+                            "Omit to run all benchmarks."
+                        ),
+                    },
+                    "extra_args": {
+                        "type": "string",
+                        "description": "Extra arguments to pass to cargo bench",
+                        "default": "",
+                    },
+                },
+                "required": [],
+            },
+        )
+
+    async def execute(self, args: dict[str, Any], cwd: str) -> tuple[str, bool]:
+        from retrai.tools.rust_bench import rust_bench
+
+        result = await rust_bench(
+            bench_name=args.get("bench_name"),
+            extra_args=args.get("extra_args", ""),
+            cwd=cwd,
+        )
+        is_error = (
+            '"error"' in result and "cargo bench" in result.lower()
+        )
+        return result, is_error
+
+
+# ──────────────────────────────────────────────────────────────────
 # Default Registry Factory
 # ──────────────────────────────────────────────────────────────────
 
@@ -1265,6 +1383,8 @@ ALL_BUILTIN_TOOLS: list[type[BaseTool]] = [
     ExperimentListTool,
     MlTrainTool,
     SqlBenchTool,
+    BioSearchTool,
+    RustBenchTool,
 ]
 
 

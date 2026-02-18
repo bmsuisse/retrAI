@@ -5,6 +5,7 @@ from __future__ import annotations
 from retrai.goals.ai_eval import AiEvalGoal
 from retrai.goals.base import GoalBase
 from retrai.goals.bun_goal import BunTestGoal
+from retrai.goals.cancer_research_goal import CancerResearchGoal
 from retrai.goals.cargo_goal import CargoTestGoal
 from retrai.goals.creative_goal import CreativeGoal
 from retrai.goals.go_goal import GoTestGoal
@@ -15,6 +16,7 @@ from retrai.goals.perf_goal import PerfCheckGoal
 from retrai.goals.pyright_goal import PyrightGoal
 from retrai.goals.pytest_goal import PytestGoal
 from retrai.goals.research_goal import ResearchGoal
+from retrai.goals.rust_optimize_goal import RustOptimizeGoal
 from retrai.goals.score_goal import ScoreGoal
 from retrai.goals.shell_goal import ShellGoal
 from retrai.goals.sql_goal import SqlBenchmarkGoal
@@ -34,6 +36,10 @@ _REGISTRY: dict[str, GoalBase] = {
     "ai-eval": AiEvalGoal(),
     "ml-optimize": MlOptimizeGoal(),
     "research": ResearchGoal(),
+    # Biomedical / scientific research
+    "cancer-research": CancerResearchGoal(),
+    # Systems / low-level performance
+    "rust-optimize": RustOptimizeGoal(),
     # Non-coding / LLM-scored goals
     "text-improve": TextImproveGoal(),
     "creative": CreativeGoal(),

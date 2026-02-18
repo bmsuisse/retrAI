@@ -47,3 +47,5 @@ class AgentState(TypedDict):
     # Smart retry / reflection
     failed_strategies: list[str]
     consecutive_failures: int
+    # Read-only tool result cache (key = "tool_name:json_args", value = result)
+    tool_cache: dict[str, str]

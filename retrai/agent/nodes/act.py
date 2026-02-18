@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -15,6 +16,15 @@ from retrai.tools.builtins import create_default_registry
 # Module-level registry — created once, reused across invocations.
 _registry = create_default_registry()
 _PARALLEL_SAFE = _registry.parallel_safe_names()
+
+
+def _cache_key(tool_name: str, args: dict) -> str:
+    """Build a stable cache key from tool name and args."""
+    try:
+        args_str = json.dumps(args, sort_keys=True)
+    except (TypeError, ValueError):
+        args_str = str(args)
+    return f"{tool_name}:{args_str}"
 
 
 def _partition_tool_calls(
@@ -65,6 +75,9 @@ async def act_node(state: AgentState, config: RunnableConfig) -> dict:
     safety_config = load_safety_config(cwd)
     safety_guard = SafetyGuard(safety_config)
 
+    # Load the cross-iteration tool cache from state
+    tool_cache: dict[str, str] = dict(state.get("tool_cache", {}))
+
     tool_results: list[ToolResult] = []
     tool_messages: list[ToolMessage] = []
 
@@ -72,8 +85,43 @@ async def act_node(state: AgentState, config: RunnableConfig) -> dict:
 
     for batch in batches:
         if len(batch) == 1:
-            # Single tool — execute normally
+            # Single tool — check cache for parallel-safe tools
             tc = batch[0]
+            if tc["name"] in _PARALLEL_SAFE:
+                key = _cache_key(tc["name"], tc["args"])
+                if key in tool_cache:
+                    cached = tool_cache[key]
+                    if event_bus:
+                        await event_bus.publish(
+                            AgentEvent(
+                                kind="log",
+                                run_id=run_id,
+                                iteration=iteration,
+                                payload={
+                                    "message": (
+                                        f"⚡ Cache hit: {tc['name']} "
+                                        f"(skipping redundant call)"
+                                    ),
+                                    "level": "debug",
+                                },
+                            )
+                        )
+                    tool_results.append(
+                        ToolResult(
+                            tool_call_id=tc["id"],
+                            name=tc["name"],
+                            content=cached,
+                            error=False,
+                        )
+                    )
+                    tool_messages.append(
+                        ToolMessage(
+                            content=cached,
+                            tool_call_id=tc["id"],
+                            name=tc["name"],
+                        )
+                    )
+                    continue
             await _execute_and_record(
                 tc,
                 cwd,
@@ -83,6 +131,7 @@ async def act_node(state: AgentState, config: RunnableConfig) -> dict:
                 tool_results,
                 tool_messages,
                 safety_guard,
+                tool_cache,
             )
         else:
             # Multiple read-only tools — execute in parallel
@@ -156,6 +205,7 @@ async def act_node(state: AgentState, config: RunnableConfig) -> dict:
         "messages": tool_messages,
         "tool_results": tool_results,
         "pending_tool_calls": [],
+        "tool_cache": tool_cache,
     }
 
 
@@ -168,6 +218,7 @@ async def _execute_and_record(
     tool_results: list[ToolResult],
     tool_messages: list[ToolMessage],
     safety_guard: SafetyGuard | None = None,
+    tool_cache: dict[str, str] | None = None,
 ) -> None:
     """Execute a single tool call and append results."""
     tool_name = tc["name"]
@@ -232,6 +283,11 @@ async def _execute_and_record(
     )
     tool_results.append(result)
     tool_messages.append(ToolMessage(content=content, tool_call_id=tool_call_id, name=tool_name))
+
+    # Cache result for parallel-safe (read-only) tools
+    if not error and tool_name in _PARALLEL_SAFE and tool_cache is not None:
+        key = _cache_key(tool_name, args)
+        tool_cache[key] = content
 
 
 async def _dispatch(tool_name: str, args: dict, cwd: str) -> tuple[str, bool]:

@@ -1,0 +1,4 @@
+goal: rust-optimize
+bench_name: sum_vec
+target_ns: 50
+iterations: 3

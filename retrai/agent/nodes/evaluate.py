@@ -60,6 +60,30 @@ async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
         achieved_final = achieved
         reason_final = reason
 
+    # Adaptive iteration budget: if goal is close (>=70%), extend the budget
+    new_max_iterations = state["max_iterations"]
+    if not achieved and details.get("percentage", 0) >= 70:
+        original_max = state["max_iterations"]
+        hard_cap = original_max * 2  # Never more than 2× original
+        if new_max_iterations < hard_cap:
+            new_max_iterations = min(new_max_iterations + 10, hard_cap)
+            if event_bus:
+                await event_bus.publish(
+                    AgentEvent(
+                        kind="log",
+                        run_id=run_id,
+                        iteration=new_iteration,
+                        payload={
+                            "message": (
+                                f"📈 Adaptive budget: goal is "
+                                f"{details.get('percentage', 0)}% complete — "
+                                f"extending max_iterations to {new_max_iterations}"
+                            ),
+                            "level": "info",
+                        },
+                    )
+                )
+
     # Inject goal status into conversation so the LLM knows where it stands
     remaining = state["max_iterations"] - new_iteration
     cost_usd = state.get("estimated_cost_usd", 0.0)
@@ -126,6 +150,7 @@ async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
         "goal_reason": reason_final,
         "iteration": new_iteration,
         "consecutive_failures": consecutive,
+        "max_iterations": new_max_iterations,
     }
 
 
